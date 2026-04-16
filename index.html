@@ -1244,21 +1244,21 @@ function generateQuiz() {
   const level = currentStage.level;
   const stageId = currentStage.id;
 
-  // Available question types - unlock progressively
+  // Available question types - unlock ~1 new type every 15 stages
   const types = [];
-  if (mode !== 'letters') types.push('math');        // S1+
-  if (mode !== 'numbers') types.push('picture');     // S1+
-  if (stageId >= 5) types.push('direction');          // S5+
-  if (stageId >= 10) types.push('counting');          // S10+: count objects
-  if (stageId >= 15 && mode !== 'letters') types.push('subtract'); // S15+
-  if (stageId >= 20) types.push('color');             // S20+: identify colors
-  if (stageId >= 30) types.push('shape');             // S30+: identify shapes
-  if (stageId >= 25) types.push('compare');            // S25+: big/small, long/short, more/less
-  if (stageId >= 40 && mode !== 'numbers') types.push('katakana'); // S40+: katakana match
-  if (stageId >= 50) types.push('sequence');          // S50+: number sequence
-  if (stageId >= 100) types.push('multiply');         // S100+: simple multiplication
-  if (stageId >= 100) types.push('divide');           // S100+: simple division
-  if (stageId >= 100) types.push('kanji');            // S100+: basic kanji
+  if (mode !== 'letters') types.push('math');                      // S1: たしざん
+  if (mode !== 'numbers') types.push('picture');                   // S1: イラスト当て
+  if (stageId >= 15) types.push('direction');                       // S15: 方向
+  if (stageId >= 30) types.push('counting');                        // S30: かず数え
+  if (stageId >= 45 && mode !== 'letters') types.push('subtract'); // S45: ひきざん
+  if (stageId >= 60) types.push('color');                           // S60: いろ
+  if (stageId >= 75) types.push('compare');                         // S75: くらべる
+  if (stageId >= 75) types.push('shape');                           // S75: かたち
+  if (stageId >= 90 && mode !== 'numbers') types.push('katakana'); // S90: カタカナ
+  if (stageId >= 90) types.push('sequence');                        // S90: じゅんばん
+  if (stageId >= 100) types.push('multiply');                       // S100: かけざん
+  if (stageId >= 100) types.push('divide');                         // S100: わりざん
+  if (stageId >= 100) types.push('kanji');                          // S100: かんじ
 
   const type = types[Math.floor(Math.random() * types.length)];
 
@@ -1339,7 +1339,7 @@ function generateQuiz() {
 
   } else if (type === 'counting') {
     // Count objects
-    if (stageId >= 40 && Math.random() < 0.5) {
+    if (stageId >= 60 && Math.random() < 0.5) {
       // Advanced: two types of objects, ask about one
       const targetCount = 1 + Math.floor(Math.random() * 5);
       const otherCount = 1 + Math.floor(Math.random() * 4);
