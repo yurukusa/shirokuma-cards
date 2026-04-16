@@ -236,15 +236,15 @@ const RECIPES = [
     color: '#E0E0E0', recipe: { footprint: 2, fur: 1 } },
 ];
 
-// 100 Stages - rockets stay modest, difficulty comes from question types
+// 200 Stages - rockets stay modest, difficulty comes from question types
 const STAGES = [];
-for (let i = 1; i <= 100; i++) {
+for (let i = 1; i <= 200; i++) {
   let level, drops;
   if (i <= 10) { level = 1; drops = 1; }
   else if (i <= 20) { level = 2; drops = 2; }
   else if (i <= 40) { level = 3; drops = 2; }
-  else if (i <= 60) { level = 3; drops = 3; }
   else if (i <= 80) { level = 3; drops = 3; }
+  else if (i <= 120) { level = 3; drops = 3; }
   else { level = 3; drops = 4; }
   // Rockets grow slowly: 3-8 max
   const rockets = Math.min(8, 3 + Math.floor(i / 15));
@@ -1244,21 +1244,21 @@ function generateQuiz() {
   const level = currentStage.level;
   const stageId = currentStage.id;
 
-  // Available question types - unlock ~1 new type every 15 stages
+  // Available question types - 15ステージごとに1種ずつ追加
   const types = [];
-  if (mode !== 'letters') types.push('math');                      // S1: たしざん
-  if (mode !== 'numbers') types.push('picture');                   // S1: イラスト当て
-  if (stageId >= 15) types.push('direction');                       // S15: 方向
-  if (stageId >= 30) types.push('counting');                        // S30: かず数え
-  if (stageId >= 45 && mode !== 'letters') types.push('subtract'); // S45: ひきざん
-  if (stageId >= 60) types.push('color');                           // S60: いろ
-  if (stageId >= 75) types.push('compare');                         // S75: くらべる
-  if (stageId >= 75) types.push('shape');                           // S75: かたち
-  if (stageId >= 90 && mode !== 'numbers') types.push('katakana'); // S90: カタカナ
-  if (stageId >= 90) types.push('sequence');                        // S90: じゅんばん
-  if (stageId >= 100) types.push('multiply');                       // S100: かけざん
-  if (stageId >= 100) types.push('divide');                         // S100: わりざん
-  if (stageId >= 100) types.push('kanji');                          // S100: かんじ
+  if (mode !== 'letters') types.push('math');                        // S1: たしざん
+  if (mode !== 'numbers') types.push('picture');                     // S1: イラスト当て
+  if (stageId >= 15) types.push('direction');                         // S15: 方向
+  if (stageId >= 30) types.push('counting');                          // S30: かず数え
+  if (stageId >= 45 && mode !== 'letters') types.push('subtract');   // S45: ひきざん
+  if (stageId >= 60) types.push('color');                             // S60: いろ
+  if (stageId >= 75) types.push('compare');                           // S75: くらべる
+  if (stageId >= 90) types.push('shape');                             // S90: かたち
+  if (stageId >= 105 && mode !== 'numbers') types.push('katakana');  // S105: カタカナ
+  if (stageId >= 120) types.push('sequence');                         // S120: じゅんばん
+  if (stageId >= 135) types.push('multiply');                         // S135: かけざん
+  if (stageId >= 150) types.push('divide');                           // S150: わりざん
+  if (stageId >= 165) types.push('kanji');                            // S165: かんじ
 
   const type = types[Math.floor(Math.random() * types.length)];
 
@@ -1848,6 +1848,16 @@ function drawGame() {
     { bg1: '#E0F7FA', bg2: '#B2EBF2', text: '#00838F' }, // 71-80 ocean
     { bg1: '#FBE9E7', bg2: '#FFCCBC', text: '#BF360C' }, // 81-90 volcano
     { bg1: '#F3E5F5', bg2: '#CE93D8', text: '#4A148C' }, // 91-100 cosmic
+    { bg1: '#E8EAF6', bg2: '#C5CAE9', text: '#283593' }, // 101-110 indigo
+    { bg1: '#FFF8E1', bg2: '#FFECB3', text: '#FF8F00' }, // 111-120 amber
+    { bg1: '#E0F2F1', bg2: '#B2DFDB', text: '#00695C' }, // 121-130 teal
+    { bg1: '#FCE4EC', bg2: '#F8BBD0', text: '#AD1457' }, // 131-140 rose
+    { bg1: '#F1F8E9', bg2: '#DCEDC8', text: '#33691E' }, // 141-150 lime
+    { bg1: '#EDE7F6', bg2: '#D1C4E9', text: '#4527A0' }, // 151-160 deep purple
+    { bg1: '#E3F2FD', bg2: '#90CAF9', text: '#0D47A1' }, // 161-170 deep blue
+    { bg1: '#FFF3E0', bg2: '#FFE0B2', text: '#E65100' }, // 171-180 deep orange
+    { bg1: '#E8F5E9', bg2: '#A5D6A7', text: '#1B5E20' }, // 181-190 deep green
+    { bg1: '#FAFAFA', bg2: '#E0E0E0', text: '#212121' }, // 191-200 platinum
   ];
   const z = zones[Math.min(zone, zones.length - 1)];
   grad.addColorStop(0, z.bg1); grad.addColorStop(1, z.bg2);
