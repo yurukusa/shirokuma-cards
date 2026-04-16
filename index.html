@@ -124,10 +124,10 @@ function sfxButton() { playTone(440, 0.08, 'triangle', 0.15); }
 const SAVE_KEY = 'shirokuma_cards_v1';
 
 const defaultSave = () => ({
-  version: 1,
+  version: 2,
   clearedStages: [],
-  materials: { footprint: 0, fur: 0, ice: 0, star: 0, shell: 0, aurora: 0 },
-  completedCards: { koguma: 0, osanpo: 0, hoshizora: 0, oyasumi: 0, ousama: 0, ouji: 0, densetsu: 0 },
+  ownedMaterials: {},  // { materialId: true }
+  completedCards: {},  // { cardId: true }
   settings: { questionMode: 'mixed', sound: true },
   stats: { totalQuestions: 0, totalCorrect: 0 }
 });
@@ -139,12 +139,12 @@ function loadGame() {
     const raw = localStorage.getItem(SAVE_KEY);
     if (raw) {
       const d = JSON.parse(raw);
-      if (d.version === 1) {
+      if (d.version === 2) {
         saveData = d;
-        // Migrate: add new material/card keys if missing
-        for (const m of MATERIALS) { if (!(m.id in saveData.materials)) saveData.materials[m.id] = 0; }
-        for (const r of RECIPES) { if (!(r.id in saveData.completedCards)) saveData.completedCards[r.id] = 0; }
         soundEnabled = d.settings.sound;
+      } else {
+        // Old save version - reset
+        saveData = defaultSave();
       }
     }
   } catch (e) { /* ignore */ }
@@ -208,33 +208,65 @@ for (const [k, src] of Object.entries(CARD_IMAGES)) {
 // 5. Game Data
 // ============================================================
 
-// Material types
-const MATERIALS = [
-  { id: 'footprint', name: 'しろくまのあしあと', dropRate: 0.30 },
-  { id: 'fur',       name: 'ふわふわのけ',       dropRate: 0.25 },
-  { id: 'ice',       name: 'キラキラのこおり',   dropRate: 0.18 },
-  { id: 'star',      name: 'ほしのしずく',       dropRate: 0.10 },
-  { id: 'shell',     name: 'こおりのかいがら',   dropRate: 0.10 },
-  { id: 'aurora',    name: 'オーロラのひかり',   dropRate: 0.07 },
+// Each completed card has its own unique materials (not consumed on synthesis)
+const RECIPES = [
+  { id: 'koguma', name: 'こぐまのシロ', rarity: 1, stars: '★', label: 'ふつう',
+    color: '#E0E0E0', materials: [
+      { id: 'koguma_foot', name: 'こぐまのあしあと' },
+      { id: 'koguma_fur', name: 'こぐまのふわけ' },
+      { id: 'koguma_ribbon', name: 'こぐまのリボン' },
+  ]},
+  { id: 'osanpo', name: 'おさんぽシロクマ', rarity: 2, stars: '★★', label: 'レア',
+    color: '#4FC3F7', materials: [
+      { id: 'osanpo_scarf', name: 'あかいマフラー' },
+      { id: 'osanpo_leaf', name: 'おさんぽのはっぱ' },
+      { id: 'osanpo_bell', name: 'おさんぽのすず' },
+  ]},
+  { id: 'hoshizora', name: 'ほしぞらシロクマ', rarity: 3, stars: '★★★', label: 'すごいレア',
+    color: '#FFD700', materials: [
+      { id: 'hoshi_dust', name: 'ほしのかけら' },
+      { id: 'hoshi_map', name: 'せいざのちず' },
+      { id: 'hoshi_tear', name: 'ほしのなみだ' },
+  ]},
+  { id: 'oyasumi', name: 'おやすみシロクマ', rarity: 4, stars: '★★★★', label: 'とてもレア',
+    color: '#5C6BC0', materials: [
+      { id: 'oyasu_pillow', name: 'ゆめのまくら' },
+      { id: 'oyasu_blanket', name: 'ふわふわブランケット' },
+      { id: 'oyasu_moon', name: 'おやすみのつき' },
+      { id: 'oyasu_lullaby', name: 'こもりうたのおと' },
+  ]},
+  { id: 'ousama', name: 'おうさまシロクマ', rarity: 5, stars: '★★★★★', label: 'ちょうレア',
+    color: '#FF6D00', materials: [
+      { id: 'king_crown', name: 'きんのおうかん' },
+      { id: 'king_cape', name: 'あかいマント' },
+      { id: 'king_scepter', name: 'おうのつえ' },
+      { id: 'king_throne', name: 'こおりのおうざ' },
+  ]},
+  { id: 'ouji', name: 'オーロラおうじ', rarity: 6, stars: '★★★★★★', label: 'ごくレア',
+    color: '#7C4DFF', materials: [
+      { id: 'ouji_light', name: 'オーロラのひかり' },
+      { id: 'ouji_crystal', name: 'にじのクリスタル' },
+      { id: 'ouji_wing', name: 'ひかりのはね' },
+      { id: 'ouji_tiara', name: 'ほしのティアラ' },
+      { id: 'ouji_gem', name: 'そらのほうせき' },
+  ]},
+  { id: 'densetsu', name: 'でんせつのシロクマ', rarity: 7, stars: '★★★★★★★', label: 'でんせつ',
+    color: '#E040FB', materials: [
+      { id: 'den_wing', name: 'でんせつのつばさ' },
+      { id: 'den_halo', name: 'にじのわ' },
+      { id: 'den_heart', name: 'えいえんのこころ' },
+      { id: 'den_star', name: 'きせきのほし' },
+      { id: 'den_crown', name: 'でんせつのおうかん' },
+  ]},
 ];
 
-// Completed cards (recipes sorted by rarity desc for priority)
-const RECIPES = [
-  { id: 'densetsu', name: 'でんせつのシロクマ', rarity: 7, stars: '★★★★★★★', label: 'でんせつ',
-    color: '#E040FB', recipe: { ice: 3, star: 2, shell: 2, aurora: 2 } },
-  { id: 'ouji', name: 'オーロラおうじ', rarity: 6, stars: '★★★★★★', label: 'ごくレア',
-    color: '#7C4DFF', recipe: { star: 2, shell: 1, aurora: 1 } },
-  { id: 'ousama', name: 'おうさまシロクマ', rarity: 5, stars: '★★★★★', label: 'ちょうレア',
-    color: '#FF6D00', recipe: { ice: 3, star: 2, shell: 1 } },
-  { id: 'oyasumi', name: 'おやすみシロクマ', rarity: 4, stars: '★★★★', label: 'とてもレア',
-    color: '#5C6BC0', recipe: { fur: 3, ice: 2, shell: 1 } },
-  { id: 'hoshizora', name: 'ほしぞらシロクマ', rarity: 3, stars: '★★★', label: 'すごいレア',
-    color: '#FFD700', recipe: { fur: 2, ice: 2, star: 1 } },
-  { id: 'osanpo', name: 'おさんぽシロクマ', rarity: 2, stars: '★★', label: 'レア',
-    color: '#4FC3F7', recipe: { footprint: 1, fur: 2, ice: 1 } },
-  { id: 'koguma', name: 'こぐまのシロ', rarity: 1, stars: '★', label: 'ふつう',
-    color: '#E0E0E0', recipe: { footprint: 2, fur: 1 } },
-];
+// Build flat material list from recipes
+const MATERIALS = [];
+for (const r of RECIPES) {
+  for (const m of r.materials) {
+    MATERIALS.push({ ...m, cardId: r.id });
+  }
+}
 
 // 200 Stages - rockets stay modest, difficulty comes from question types
 const STAGES = [];
@@ -820,7 +852,14 @@ function drawMaterialIcon(cx, cy, matId, size) {
       ctx.arc(cx, cy+s*0.05, s*(0.12+i*0.07), Math.PI*1.1, Math.PI*1.9);
       ctx.stroke();
     }
-  } else if (matId === 'aurora') {
+  } else {
+    // Default: generic sparkle for any material
+    ctx.fillStyle = '#90CAF9';
+    ctx.beginPath(); ctx.arc(cx, cy, s*0.25, 0, Math.PI*2); ctx.fill();
+    ctx.fillStyle = '#FFF';
+    ctx.beginPath(); ctx.arc(cx-s*0.05, cy-s*0.08, s*0.06, 0, Math.PI*2); ctx.fill();
+    return;
+  } if (matId === 'aurora_UNUSED') {
     // Aurora light
     const colors = ['#E040FB','#7C4DFF','#40C4FF','#69F0AE'];
     for (let i = 0; i < 4; i++) {
@@ -1591,42 +1630,20 @@ function generateQuiz() {
   selectedAnswer = -1;
 }
 
-// Fixed drop table: each stage gives specific materials (no RNG)
-// Cycles through materials, rarer ones appear at higher stages
-function getStageDrops(stageId, dropCount) {
-  const drops = [];
-  // Available materials based on stage progression
-  const available = MATERIALS.filter(m => {
-    if (m.id === 'shell' && stageId < 20) return false;
-    if (m.id === 'aurora' && stageId < 40) return false;
-    return true;
-  });
-  for (let i = 0; i < dropCount; i++) {
-    // Rotate through available materials based on stage number
-    const idx = (stageId - 1 + i) % available.length;
-    drops.push(available[idx]);
-  }
-  return drops;
+// Fixed drop: each stage gives 1 specific material (deterministic, no RNG)
+function getStageDrops(stageId) {
+  const idx = (stageId - 1) % MATERIALS.length;
+  return [MATERIALS[idx]];
 }
 
 function checkAutoSynth() {
-  // Check recipes in priority order (highest rarity first)
+  // Check if any card's materials are all collected (not yet completed)
   for (const recipe of RECIPES) {
-    let canMake = true;
-    for (const [matId, count] of Object.entries(recipe.recipe)) {
-      if ((saveData.materials[matId] || 0) < count) {
-        canMake = false;
-        break;
-      }
-    }
-    if (canMake) {
-      // Build list of consumed materials for animation
-      synthCards = [];
-      for (const [matId, count] of Object.entries(recipe.recipe)) {
-        for (let n = 0; n < count; n++) synthCards.push(matId);
-        saveData.materials[matId] -= count;
-      }
-      saveData.completedCards[recipe.id] = (saveData.completedCards[recipe.id] || 0) + 1;
+    if (saveData.completedCards[recipe.id]) continue; // already have it
+    const allOwned = recipe.materials.every(m => saveData.ownedMaterials[m.id]);
+    if (allOwned) {
+      synthCards = recipe.materials.map(m => m.id);
+      saveData.completedCards[recipe.id] = true;
       saveGame();
       return recipe;
     }
@@ -1783,10 +1800,10 @@ function updateGame() {
     bearRunX += 2.5;
     spawnSparkles(bearRunX, 200, 1);
     if (bearRunTimer > 80) {
-      // Drop cards (fixed per stage, no RNG)
-      droppedCards = getStageDrops(currentStage.id, currentStage.drops);
+      // Drop cards (fixed per stage, 1 unique material)
+      droppedCards = getStageDrops(currentStage.id);
       for (const mat of droppedCards) {
-        saveData.materials[mat.id]++;
+        saveData.ownedMaterials[mat.id] = true;
       }
       // Mark stage as cleared
       if (!saveData.clearedStages.includes(currentStage.id)) {
@@ -2247,8 +2264,7 @@ let albumDragLastY = -1;
 function updateAlbum() {
   // Smooth scroll
   albumScrollY += (albumScrollTarget - albumScrollY) * 0.2;
-  const matRows = Math.ceil(MATERIALS.length / 2);
-  const contentH = 80 + matRows * 75 + 40 + RECIPES.length * 95 + 60;
+  const contentH = 90 + RECIPES.length * 100 + 60;
   const maxScroll = Math.max(0, contentH - 580);
   albumScrollTarget = Math.max(0, Math.min(maxScroll, albumScrollTarget));
   albumScrollY = Math.max(0, Math.min(maxScroll, albumScrollY));
@@ -2282,78 +2298,73 @@ function drawAlbum() {
 
   const oY = -albumScrollY;
 
-  // Materials section
-  ctx.fillStyle = '#795548';
-  ctx.font = 'bold 16px sans-serif';
-  ctx.textAlign = 'left';
-  ctx.fillText('そざいカード', 25, 75 + oY);
+  // Collection view: each card with its materials
+  let curY = 70 + oY;
+  const totalMats = MATERIALS.length;
+  const ownedMats = MATERIALS.filter(m => saveData.ownedMaterials[m.id]).length;
+  const totalCards = RECIPES.length;
+  const ownedCards = RECIPES.filter(r => saveData.completedCards[r.id]).length;
 
-  for (let i = 0; i < MATERIALS.length; i++) {
-    const mat = MATERIALS[i];
-    const mx = 20 + (i % 2) * 190;
-    const my = 90 + Math.floor(i / 2) * 75 + oY;
-    if (my > -80 && my < 700) {
-      const count = saveData.materials[mat.id] || 0;
-      drawCard(mx, my, 65, 60, '', '', count > 0 ? '#4FC3F7' : '#B0BEC5', false, mat.id);
-      ctx.fillStyle = count > 0 ? '#333' : '#999';
-      ctx.font = '12px sans-serif';
-      ctx.textAlign = 'left';
-      ctx.fillText(mat.name, mx + 72, my + 25);
-      ctx.font = 'bold 15px sans-serif';
-      ctx.fillText(`x ${count}`, mx + 72, my + 45);
-    }
-  }
+  ctx.fillStyle = '#795548'; ctx.font = '13px sans-serif'; ctx.textAlign = 'center';
+  ctx.fillText(`そざい ${ownedMats}/${totalMats}　かんせい ${ownedCards}/${totalCards}`, DESIGN_W/2, curY);
+  curY += 20;
 
-  const matRows = Math.ceil(MATERIALS.length / 2);
-  const compStartY = 90 + matRows * 75 + 20 + oY;
+  for (const recipe of RECIPES) {
+    if (curY + oY > -200 && curY < 800) {
+      const cardOwned = saveData.completedCards[recipe.id];
 
-  ctx.fillStyle = '#795548';
-  ctx.font = 'bold 16px sans-serif';
-  ctx.textAlign = 'left';
-  ctx.fillText('かんせいカード', 25, compStartY);
-
-  for (let i = 0; i < RECIPES.length; i++) {
-    const recipe = RECIPES[RECIPES.length - 1 - i];
-    const cy = compStartY + 20 + i * 95;
-    if (cy > -100 && cy < 700) {
-      const count = saveData.completedCards[recipe.id] || 0;
-      const owned = count > 0;
-
-      if (owned) {
-        drawCard(20, cy, 70, 82, '', recipe.name, recipe.color, true);
-        drawCardBear(20 + 35, cy + 28, 50, recipe.id);
-      } else {
-        drawCard(20, cy, 70, 82, '', '???', '#B0BEC5');
-        ctx.fillStyle = '#B0BEC5';
-        ctx.font = 'bold 24px sans-serif';
-        ctx.textAlign = 'center';
-        ctx.fillText('?', 55, cy + 38);
-      }
-
-      ctx.fillStyle = owned ? '#333' : '#999';
-      ctx.font = 'bold 13px sans-serif';
-      ctx.textAlign = 'left';
-      ctx.fillText(owned ? recipe.name : '???', 100, cy + 18);
+      // Card header
       ctx.fillStyle = recipe.color === '#E0E0E0' ? '#666' : recipe.color;
-      ctx.font = '12px sans-serif';
-      ctx.fillText(`${recipe.stars} ${recipe.label}`, 100, cy + 36);
-
-      if (owned) {
-        ctx.fillStyle = '#333';
-        ctx.fillText(`もってる: ${count}まい`, 100, cy + 52);
-      } else {
-        ctx.fillStyle = '#999';
-        let needed = [];
-        for (const [matId, req] of Object.entries(recipe.recipe)) {
-          const have = saveData.materials[matId] || 0;
-          const mat = MATERIALS.find(m => m.id === matId);
-          if (have < req) needed.push(`${mat.name.slice(0,3)}あと${req - have}`);
-        }
-        if (needed.length > 0) {
-          ctx.font = '10px sans-serif';
-          ctx.fillText(needed.join(' '), 100, cy + 52);
-        }
+      ctx.font = 'bold 14px sans-serif'; ctx.textAlign = 'left';
+      ctx.fillText(`${recipe.stars} ${recipe.name}`, 20, curY);
+      if (cardOwned) {
+        ctx.fillStyle = '#2E7D32'; ctx.font = 'bold 12px sans-serif';
+        ctx.fillText('かんせい！', DESIGN_W - 90, curY);
       }
+      curY += 8;
+
+      // Completed card image (small)
+      if (cardOwned) {
+        drawCard(20, curY, 55, 65, '', '', recipe.color, true);
+        drawCardBear(47, curY + 25, 40, recipe.id);
+      } else {
+        drawCard(20, curY, 55, 65, '', '', '#B0BEC5');
+        ctx.fillStyle = '#CCC'; ctx.font = 'bold 20px sans-serif'; ctx.textAlign = 'center';
+        ctx.fillText('?', 47, curY + 35);
+      }
+
+      // Material slots
+      const mats = recipe.materials;
+      const slotW = Math.min(50, (DESIGN_W - 100) / mats.length);
+      for (let mi = 0; mi < mats.length; mi++) {
+        const mat = mats[mi];
+        const mx = 85 + mi * (slotW + 4);
+        const owned = saveData.ownedMaterials[mat.id];
+        // Slot box
+        ctx.fillStyle = owned ? 'rgba(76,175,80,0.15)' : 'rgba(0,0,0,0.05)';
+        drawRoundRect(mx, curY, slotW, 65, 6); ctx.fill();
+        ctx.strokeStyle = owned ? '#66BB6A' : '#CCC'; ctx.lineWidth = 1.5;
+        ctx.stroke();
+        // Check or lock
+        ctx.textAlign = 'center';
+        if (owned) {
+          ctx.fillStyle = '#66BB6A'; ctx.font = 'bold 18px sans-serif';
+          ctx.fillText('✓', mx + slotW/2, curY + 25);
+        } else {
+          ctx.fillStyle = '#CCC'; ctx.font = '16px sans-serif';
+          ctx.fillText('?', mx + slotW/2, curY + 25);
+        }
+        // Material name (tiny)
+        ctx.fillStyle = owned ? '#555' : '#BBB';
+        ctx.font = '9px sans-serif';
+        const shortName = mat.name.length > 5 ? mat.name.slice(0, 5) + '..' : mat.name;
+        ctx.fillText(shortName, mx + slotW/2, curY + 45);
+        ctx.fillText(owned ? 'GET' : '???', mx + slotW/2, curY + 57);
+      }
+
+      curY += 78;
+    } else {
+      curY += 78 + 20;
     }
   }
 
