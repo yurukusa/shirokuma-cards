@@ -988,12 +988,22 @@ function drawMaterialIcon(cx, cy, matId, size) {
 
   if (matIcons[matId]) { matIcons[matId](cx, cy, s); return; }
 
-  // Auto-icon: match keywords in material name → shape, colored by parent card
+  // Auto-icon: match keywords in material name → shape, colored by name hint or parent card
   const mat = MATERIALS.find(m => m.id === matId);
   if (mat) {
     const card = RECIPES.find(r => r.id === mat.cardId);
-    const col = card ? card.color : '#90CAF9';
+    const baseCol = card ? card.color : '#90CAF9';
     const name = mat.name;
+    // 名前に色ヒントがあればその色を優先
+    const colorHints = {
+      'ピンク': '#EC407A', 'あか': '#EF5350', 'あお': '#42A5F5', 'きいろ': '#FFEE58',
+      'みどり': '#66BB6A', 'オレンジ': '#FFA726', 'むらさき': '#AB47BC', 'きん': '#FFD700',
+      'ぎん': '#B0BEC5', 'しろ': '#F5F5F5', 'くろ': '#424242', 'にじ': '#E040FB',
+    };
+    let col = baseCol;
+    for (const [hint, hex] of Object.entries(colorHints)) {
+      if (name.includes(hint)) { col = hex; break; }
+    }
     const r = s * 0.28;
 
     // Keyword → shape mapping
@@ -1618,6 +1628,7 @@ let synthCards = []; // material cards consumed in synthesis (for animation)
 let synthTimer = 0;
 let synthResult = null;
 let synthPhase = 0; // 0=show materials, 1=merge, 2=reveal card
+let synthFlash = 0; // 大合成フラッシュ強度 (1.0→0)
 let bearRunX = 0;
 let bearRunTimer = 0;
 
@@ -2244,6 +2255,7 @@ function updateGame() {
     }
   } else if (gamePhase === 'synthesis') {
     synthTimer++;
+    if (synthFlash > 0) synthFlash = Math.max(0, synthFlash - 0.03);
     const isFinalSynth = synthResult && synthResult.synthLevel === 3;
     if (synthPhase === 0 && synthTimer > (isFinalSynth ? 70 : 50)) {
       // Materials shown long enough, start merge (大合成はじっくり見せる)
@@ -2256,9 +2268,23 @@ function updateGame() {
       synthPhase = 2;
       synthTimer = 0;
       sfxSynth();
-      const sparkleCount = isFinalSynth ? 80 : 40;
-      spawnSparkles(DESIGN_W / 2, 320, sparkleCount);
-      spawnHearts(DESIGN_W / 2, 320, isFinalSynth ? 15 : 5);
+      if (isFinalSynth) {
+        // 大合成: 画面フラッシュ + 和音 + 大量パーティクル
+        synthFlash = 1.0; // フラッシュ強度（drawGameで使用）
+        playTone(523, 0.3, 'sine', 0.3);
+        playTone(659, 0.25, 'sine', 0.3);
+        playTone(784, 0.2, 'sine', 0.3);
+        spawnSparkles(DESIGN_W / 2, 320, 120);
+        spawnHearts(DESIGN_W / 2, 320, 20);
+        // 四隅からもスパークル
+        spawnSparkles(50, 100, 15);
+        spawnSparkles(DESIGN_W - 50, 100, 15);
+        spawnSparkles(50, DESIGN_H - 100, 15);
+        spawnSparkles(DESIGN_W - 50, DESIGN_H - 100, 15);
+      } else {
+        spawnSparkles(DESIGN_W / 2, 320, 40);
+        spawnHearts(DESIGN_W / 2, 320, 5);
+      }
     } else if (synthPhase === 2) {
       if (synthTimer < 30) spawnSparkles(DESIGN_W / 2, 320, 2);
       if (inputTapped && synthTimer > 40) {
@@ -2620,18 +2646,28 @@ function drawGame() {
           const bob = Math.sin(sceneTimer * 0.08 + i) * 4;
           drawCard(cx, 170 + bob, 55, 68, '', '', '#4FC3F7', false, matCards[i]);
         }
-        // 下段: キーアイテム（金色枠、大きめ）
-        const keySpacing = 100;
+        // 下段: キーアイテム（金色枠＋実際の画像）
+        const keySpacing = 120;
+        const keyNames = KEY_ITEMS[synthResult.id] || ['キーアイテム1', 'キーアイテム2'];
         for (let i = 0; i < keyCards.length; i++) {
           const keyId = keyCards[i];
-          const cx = DESIGN_W / 2 - keySpacing / 2 + i * keySpacing - 35;
+          const cx = DESIGN_W / 2 - keySpacing / 2 + i * keySpacing - 40;
           const bob = Math.sin(sceneTimer * 0.1 + i * 2) * 5;
-          // 金色の光るカード
+          const ky = 255 + bob;
+          // 金色の光るカード枠
           ctx.save();
           ctx.shadowColor = '#FFD700';
           ctx.shadowBlur = 15 + Math.sin(sceneTimer * 0.15) * 5;
-          drawCard(cx, 260 + bob, 70, 88, '', '', '#FFD700', true, keyId);
+          drawCard(cx, ky, 80, 100, '', '', '#FFD700', true);
           ctx.restore();
+          // キーアイテム画像
+          const keyImg = KEY_ITEM_IMG_CACHE[keyId];
+          if (keyImg && keyImg.complete) {
+            ctx.drawImage(keyImg, cx + 8, ky + 5, 64, 64);
+          }
+          // キーアイテム名
+          ctx.fillStyle = '#333'; ctx.font = 'bold 11px sans-serif';
+          ctx.fillText(keyNames[i], cx + 40, ky + 85);
         }
         // 矢印と「？」を下に
         ctx.fillStyle = '#FFD700';
@@ -2698,19 +2734,24 @@ function drawGame() {
           drawCard(cx, cy, 55 * s, 68 * s, '', '', '#4FC3F7', false, matCards[i]);
           ctx.globalAlpha = 1;
         }
-        // キーアイテム（下段から中央へ、金色光付き）
-        const keySpacing = 100;
+        // キーアイテム（下段から中央へ、金色光＋実画像付き）
+        const keyMergeSpacing = 120;
         for (let i = 0; i < keyCards.length; i++) {
-          const startX = DESIGN_W / 2 - keySpacing / 2 + i * keySpacing - 35;
-          const targetX = DESIGN_W / 2 - 35;
+          const startX = DESIGN_W / 2 - keyMergeSpacing / 2 + i * keyMergeSpacing - 40;
+          const targetX = DESIGN_W / 2 - 40;
           const cx = startX + (targetX - startX) * eased;
-          const cy = 260 + (340 - 260) * eased;
+          const cy = 255 + (340 - 255) * eased;
           const s = 1 - eased * 0.3;
           ctx.globalAlpha = 1 - eased * 0.4;
           ctx.save();
           ctx.shadowColor = '#FFD700';
           ctx.shadowBlur = 20 * (1 - eased);
-          drawCard(cx, cy, 70 * s, 88 * s, '', '', '#FFD700', true, keyCards[i]);
+          drawCard(cx, cy, 80 * s, 100 * s, '', '', '#FFD700', true);
+          // キーアイテム画像
+          const keyImg = KEY_ITEM_IMG_CACHE[keyCards[i]];
+          if (keyImg && keyImg.complete) {
+            ctx.drawImage(keyImg, cx + 8 * s, cy + 5 * s, 64 * s, 64 * s);
+          }
           ctx.restore();
           ctx.globalAlpha = 1;
         }
@@ -2757,6 +2798,14 @@ function drawGame() {
       const cardH = (sl === 3 ? 180 : 130) * cardScale;
 
       if (sl === 3) {
+        // 大合成: 背景に放射光
+        const rayAlpha = Math.min(0.3, revealProgress * 0.3);
+        const rayGrad = ctx.createRadialGradient(DESIGN_W/2, 300, 0, DESIGN_W/2, 300, 200);
+        rayGrad.addColorStop(0, `rgba(255,215,0,${rayAlpha})`);
+        rayGrad.addColorStop(0.5, `rgba(255,180,0,${rayAlpha * 0.5})`);
+        rayGrad.addColorStop(1, 'rgba(255,180,0,0)');
+        ctx.fillStyle = rayGrad;
+        ctx.fillRect(0, 100, DESIGN_W, 400);
         // Full card with bear image
         drawCard(DESIGN_W / 2 - cardW / 2, 200, cardW, cardH, '', synthResult.name, synthResult.color, true);
         drawCardBear(DESIGN_W / 2, 200 + cardH * 0.38, cardH * 0.5 * cardScale, synthResult.id);
@@ -2802,6 +2851,12 @@ function drawGame() {
 
   // Particles on top
   drawParticles();
+
+  // 大合成フラッシュエフェクト
+  if (synthFlash > 0) {
+    ctx.fillStyle = `rgba(255,255,200,${synthFlash * 0.7})`;
+    ctx.fillRect(0, 0, DESIGN_W, DESIGN_H);
+  }
 }
 
 // ============================================================
