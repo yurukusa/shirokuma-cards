@@ -1760,15 +1760,17 @@ function generateQuiz() {
       correctIndex: choices.indexOf(answer), disabledChoices: [] };
 
   } else if (type === 'subtract') {
+    // 引き算はS45で解禁。解禁からの経過ステージで難易度を決定
+    const subLevel = stageId - 45; // 0=解禁直後
     // 30% chance of easy review
-    const effSt = (stageId > 25 && Math.random() < 0.3) ? 15 + Math.floor(Math.random() * 10) : stageId;
+    const effLevel = (subLevel > 15 && Math.random() < 0.3) ? Math.floor(Math.random() * 15) : subLevel;
     let minA, maxA, maxB;
-    if (effSt <= 20) { minA = 3; maxA = 7; maxB = 3; }       // 3-1 ~ 7-3 (easy single digit)
-    else if (effSt <= 30) { minA = 4; maxA = 9; maxB = 5; }   // 4-1 ~ 9-5
-    else if (effSt <= 40) { minA = 5; maxA = 10; maxB = 7; }  // 5-2 ~ 10-7
-    else if (effSt <= 60) { minA = 10; maxA = 15; maxB = 9; } // 10-3 ~ 15-9 (2digit - 1digit)
-    else if (effSt <= 80) { minA = 11; maxA = 18; maxB = 9; } // 11-4 ~ 18-9
-    else { minA = 12; maxA = 19; maxB = 9; }                    // 12-5 ~ 19-9
+    if (effLevel <= 5) { minA = 3; maxA = 6; maxB = 2; }         // 3-1 ~ 6-2 (簡単な一桁)
+    else if (effLevel <= 15) { minA = 4; maxA = 8; maxB = 4; }   // 4-1 ~ 8-4
+    else if (effLevel <= 30) { minA = 5; maxA = 10; maxB = 6; }  // 5-2 ~ 10-6
+    else if (effLevel <= 45) { minA = 7; maxA = 13; maxB = 8; }  // 7-3 ~ 13-8 (繰り下がり入門)
+    else if (effLevel <= 70) { minA = 10; maxA = 18; maxB = 9; } // 10-3 ~ 18-9 (二桁-一桁)
+    else { minA = 12; maxA = 19; maxB = 9; }                       // 12-5 ~ 19-9
     const a = minA + Math.floor(Math.random() * (maxA - minA + 1));
     const b = 1 + Math.floor(Math.random() * Math.min(maxB, a - 1));
     const answer = a - b;
