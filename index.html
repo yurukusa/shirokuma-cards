@@ -2038,10 +2038,12 @@ function checkAutoSynth() {
     const keys = KEY_ITEMS[recipe.id] || ['キーアイテム1', 'キーアイテム2'];
 
     if (owned >= 15 && currentLevel < 3) {
-      synthCards = recipe.materials.slice(10, 15).map(m => m.id);
+      // 大合成: 5素材 + キーアイテム2個 → 完成カード
+      const matIds = recipe.materials.slice(10, 15).map(m => m.id);
+      synthCards = [...matIds, recipe.id + '_key1', recipe.id + '_key2'];
       saveData.completedCards[recipe.id] = 3;
       saveGame();
-      return { ...recipe, synthLevel: 3, synthLabel: 'かんせい！' };
+      return { ...recipe, synthLevel: 3, synthLabel: 'だいごうせい！' };
     } else if (owned >= 10 && currentLevel < 2) {
       synthCards = recipe.materials.slice(5, 10).map(m => m.id);
       saveData.completedCards[recipe.id] = 2;
@@ -2242,21 +2244,24 @@ function updateGame() {
     }
   } else if (gamePhase === 'synthesis') {
     synthTimer++;
-    if (synthPhase === 0 && synthTimer > 50) {
-      // Materials shown long enough, start merge
+    const isFinalSynth = synthResult && synthResult.synthLevel === 3;
+    if (synthPhase === 0 && synthTimer > (isFinalSynth ? 70 : 50)) {
+      // Materials shown long enough, start merge (大合成はじっくり見せる)
       synthPhase = 1;
       synthTimer = 0;
-      playTone(523, 0.2, 'sine', 0.2);
-    } else if (synthPhase === 1 && synthTimer > 40) {
-      // Merge done, reveal card
+      playTone(isFinalSynth ? 660 : 523, 0.3, 'sine', 0.2);
+      if (isFinalSynth) playTone(440, 0.2, 'triangle', 0.15);
+    } else if (synthPhase === 1 && synthTimer > (isFinalSynth ? 55 : 40)) {
+      // Merge done, reveal card (大合成はマージも長め)
       synthPhase = 2;
       synthTimer = 0;
       sfxSynth();
-      spawnSparkles(DESIGN_W / 2, 320, 40);
-      spawnHearts(DESIGN_W / 2, 320, 5);
+      const sparkleCount = isFinalSynth ? 80 : 40;
+      spawnSparkles(DESIGN_W / 2, 320, sparkleCount);
+      spawnHearts(DESIGN_W / 2, 320, isFinalSynth ? 15 : 5);
     } else if (synthPhase === 2) {
       if (synthTimer < 30) spawnSparkles(DESIGN_W / 2, 320, 2);
-      if (inputTapped && synthTimer > 60) {
+      if (inputTapped && synthTimer > 40) {
         // Check for another synthesis
         const nextSynth = checkAutoSynth();
         if (nextSynth) {
@@ -2599,61 +2604,146 @@ function drawGame() {
 
     if (synthPhase === 0) {
       // Phase 0: Show material cards being consumed
-      ctx.fillText('ごうせい はつどう！', DESIGN_W / 2, 140);
-      const n = synthCards.length;
-      const spacing = Math.min(80, (DESIGN_W - 60) / n);
-      const startX = DESIGN_W / 2 - (n - 1) * spacing / 2 - 30;
-      for (let i = 0; i < n; i++) {
-        const matId = synthCards[i];
-        const cx = startX + i * spacing;
-        // Slight bobbing
-        const bob = Math.sin(sceneTimer * 0.08 + i) * 4;
-        drawCard(cx, 180 + bob, 60, 75, '', '', '#4FC3F7', false, matId);
-      }
-      // Arrow pointing down
-      ctx.fillStyle = '#FFD700';
-      ctx.font = 'bold 40px sans-serif';
-      const arrowPulse = Math.sin(sceneTimer * 0.15) * 5;
-      ctx.fillText('▼', DESIGN_W / 2, 290 + arrowPulse);
+      const sl = synthResult.synthLevel || 3;
+      const isFinal = sl === 3;
+      ctx.fillText(isFinal ? 'だいごうせい はつどう！' : 'ごうせい はつどう！', DESIGN_W / 2, 140);
 
-      // Show target card outline (mystery)
-      ctx.strokeStyle = 'rgba(255,215,0,0.5)';
-      ctx.lineWidth = 2;
-      ctx.setLineDash([5, 5]);
-      drawRoundRect(DESIGN_W / 2 - 55, 320, 110, 150, 8);
-      ctx.stroke();
-      ctx.setLineDash([]);
-      ctx.fillStyle = 'rgba(255,215,0,0.3)';
-      ctx.font = 'bold 40px sans-serif';
-      ctx.fillText('?', DESIGN_W / 2, 405);
+      if (isFinal) {
+        // 大合成: 上段に素材5個、下段にキーアイテム2個
+        const matCards = synthCards.slice(0, 5);
+        const keyCards = synthCards.slice(5); // key1, key2
+        // 上段: 素材カード
+        const matSpacing = Math.min(70, (DESIGN_W - 60) / 5);
+        const matStartX = DESIGN_W / 2 - 2 * matSpacing - 30;
+        for (let i = 0; i < matCards.length; i++) {
+          const cx = matStartX + i * matSpacing;
+          const bob = Math.sin(sceneTimer * 0.08 + i) * 4;
+          drawCard(cx, 170 + bob, 55, 68, '', '', '#4FC3F7', false, matCards[i]);
+        }
+        // 下段: キーアイテム（金色枠、大きめ）
+        const keySpacing = 100;
+        for (let i = 0; i < keyCards.length; i++) {
+          const keyId = keyCards[i];
+          const cx = DESIGN_W / 2 - keySpacing / 2 + i * keySpacing - 35;
+          const bob = Math.sin(sceneTimer * 0.1 + i * 2) * 5;
+          // 金色の光るカード
+          ctx.save();
+          ctx.shadowColor = '#FFD700';
+          ctx.shadowBlur = 15 + Math.sin(sceneTimer * 0.15) * 5;
+          drawCard(cx, 260 + bob, 70, 88, '', '', '#FFD700', true, keyId);
+          ctx.restore();
+        }
+        // 矢印と「？」を下に
+        ctx.fillStyle = '#FFD700';
+        ctx.font = 'bold 40px sans-serif';
+        const arrowPulse = Math.sin(sceneTimer * 0.15) * 5;
+        ctx.fillText('▼', DESIGN_W / 2, 375 + arrowPulse);
+        ctx.strokeStyle = 'rgba(255,215,0,0.7)';
+        ctx.lineWidth = 3;
+        ctx.setLineDash([5, 5]);
+        drawRoundRect(DESIGN_W / 2 - 65, 400, 130, 170, 10);
+        ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.fillStyle = 'rgba(255,215,0,0.4)';
+        ctx.font = 'bold 50px sans-serif';
+        ctx.fillText('?', DESIGN_W / 2, 500);
+      } else {
+        // 中合成: 素材5個のみ（従来通り）
+        const n = synthCards.length;
+        const spacing = Math.min(80, (DESIGN_W - 60) / n);
+        const startX = DESIGN_W / 2 - (n - 1) * spacing / 2 - 30;
+        for (let i = 0; i < n; i++) {
+          const matId = synthCards[i];
+          const cx = startX + i * spacing;
+          const bob = Math.sin(sceneTimer * 0.08 + i) * 4;
+          drawCard(cx, 180 + bob, 60, 75, '', '', '#4FC3F7', false, matId);
+        }
+        ctx.fillStyle = '#FFD700';
+        ctx.font = 'bold 40px sans-serif';
+        const arrowPulse = Math.sin(sceneTimer * 0.15) * 5;
+        ctx.fillText('▼', DESIGN_W / 2, 290 + arrowPulse);
+        ctx.strokeStyle = 'rgba(255,215,0,0.5)';
+        ctx.lineWidth = 2;
+        ctx.setLineDash([5, 5]);
+        drawRoundRect(DESIGN_W / 2 - 55, 320, 110, 150, 8);
+        ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.fillStyle = 'rgba(255,215,0,0.3)';
+        ctx.font = 'bold 40px sans-serif';
+        ctx.fillText('?', DESIGN_W / 2, 405);
+      }
 
     } else if (synthPhase === 1) {
       // Phase 1: Cards merge toward center
-      ctx.fillText('ごうせい ちゅう...', DESIGN_W / 2, 140);
+      const sl = synthResult.synthLevel || 3;
+      const isFinal = sl === 3;
+      ctx.fillText(isFinal ? 'だいごうせい ちゅう...！' : 'ごうせい ちゅう...', DESIGN_W / 2, 140);
       const n = synthCards.length;
       const progress = Math.min(1, synthTimer / 35);
       const eased = 1 - (1 - progress) * (1 - progress); // ease-out
-      for (let i = 0; i < n; i++) {
-        const matId = synthCards[i];
-        const spacing = Math.min(80, (DESIGN_W - 60) / n);
-        const startX = DESIGN_W / 2 - (n - 1) * spacing / 2 - 30 + i * spacing;
-        const targetX = DESIGN_W / 2 - 30;
-        const cx = startX + (targetX - startX) * eased;
-        const cy = 180 + (320 - 180) * eased;
-        const cardScale = 1 - eased * 0.3;
-        const cardAlpha = 1 - eased * 0.5;
-        ctx.globalAlpha = cardAlpha;
-        drawCard(cx, cy, 60 * cardScale, 75 * cardScale, '', '', '#FFD700', true, matId);
-        ctx.globalAlpha = 1;
+
+      if (isFinal) {
+        // 大合成: 素材とキーアイテムが2段から中央に集まる
+        const matCards = synthCards.slice(0, 5);
+        const keyCards = synthCards.slice(5);
+        // 素材（上段から中央へ）
+        const matSpacing = Math.min(70, (DESIGN_W - 60) / 5);
+        for (let i = 0; i < matCards.length; i++) {
+          const startX = DESIGN_W / 2 - 2 * matSpacing - 30 + i * matSpacing;
+          const targetX = DESIGN_W / 2 - 30;
+          const cx = startX + (targetX - startX) * eased;
+          const cy = 170 + (340 - 170) * eased;
+          const s = 1 - eased * 0.4;
+          ctx.globalAlpha = 1 - eased * 0.6;
+          drawCard(cx, cy, 55 * s, 68 * s, '', '', '#4FC3F7', false, matCards[i]);
+          ctx.globalAlpha = 1;
+        }
+        // キーアイテム（下段から中央へ、金色光付き）
+        const keySpacing = 100;
+        for (let i = 0; i < keyCards.length; i++) {
+          const startX = DESIGN_W / 2 - keySpacing / 2 + i * keySpacing - 35;
+          const targetX = DESIGN_W / 2 - 35;
+          const cx = startX + (targetX - startX) * eased;
+          const cy = 260 + (340 - 260) * eased;
+          const s = 1 - eased * 0.3;
+          ctx.globalAlpha = 1 - eased * 0.4;
+          ctx.save();
+          ctx.shadowColor = '#FFD700';
+          ctx.shadowBlur = 20 * (1 - eased);
+          drawCard(cx, cy, 70 * s, 88 * s, '', '', '#FFD700', true, keyCards[i]);
+          ctx.restore();
+          ctx.globalAlpha = 1;
+        }
+      } else {
+        // 中合成: 従来通り
+        for (let i = 0; i < n; i++) {
+          const matId = synthCards[i];
+          const spacing = Math.min(80, (DESIGN_W - 60) / n);
+          const startX = DESIGN_W / 2 - (n - 1) * spacing / 2 - 30 + i * spacing;
+          const targetX = DESIGN_W / 2 - 30;
+          const cx = startX + (targetX - startX) * eased;
+          const cy = 180 + (320 - 180) * eased;
+          const cardScale = 1 - eased * 0.3;
+          const cardAlpha = 1 - eased * 0.5;
+          ctx.globalAlpha = cardAlpha;
+          drawCard(cx, cy, 60 * cardScale, 75 * cardScale, '', '', '#FFD700', true, matId);
+          ctx.globalAlpha = 1;
+        }
       }
-      // Glow at center growing
+      // Glow at center growing (大合成は大きく光る)
       if (progress > 0.5) {
-        const glowSize = (progress - 0.5) * 2 * 60;
+        const baseGlow = isFinal ? 90 : 60;
+        const glowSize = (progress - 0.5) * 2 * baseGlow;
+        const glowColor = isFinal ? '255,180,0' : '255,215,0';
         const grad = ctx.createRadialGradient(DESIGN_W/2, 360, 0, DESIGN_W/2, 360, glowSize);
-        grad.addColorStop(0, 'rgba(255,215,0,0.6)');
-        grad.addColorStop(1, 'rgba(255,215,0,0)');
+        grad.addColorStop(0, `rgba(${glowColor},0.8)`);
+        grad.addColorStop(1, `rgba(${glowColor},0)`);
         ctx.fillStyle = grad;
         ctx.fillRect(DESIGN_W/2 - glowSize, 360 - glowSize, glowSize*2, glowSize*2);
+        // 大合成: 追加スパークル
+        if (isFinal && progress > 0.7) {
+          spawnSparkles(DESIGN_W / 2, 360, 3);
+        }
       }
 
     } else if (synthPhase === 2) {
@@ -2699,7 +2789,7 @@ function drawGame() {
         ctx.fillText('NEW!', DESIGN_W / 2, 455 + newPulse);
       }
 
-      if (synthTimer > 60) {
+      if (synthTimer > 40) {
         const pulse = Math.sin(sceneTimer * 0.1) * 0.3 + 0.7;
         ctx.globalAlpha = pulse;
         ctx.fillStyle = '#FFF';
