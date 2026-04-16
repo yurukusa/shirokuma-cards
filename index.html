@@ -2079,7 +2079,7 @@ function updateGame() {
         // Play a subtle hint sound
         playTone(440, 0.15, 'triangle', 0.2);
       } else {
-        scene = 'stageSelect';
+        goToStageSelect();
       }
     }
   } else if (gamePhase === 'synthesis') {
@@ -2107,11 +2107,23 @@ function updateGame() {
           synthPhase = 0;
           playTone(440, 0.15, 'triangle', 0.2);
         } else {
-          scene = 'stageSelect';
+          goToStageSelect();
         }
       }
     }
   }
+}
+
+function goToStageSelect() {
+  scene = 'stageSelect';
+  // Auto-advance to next world if current world is fully cleared
+  const clearedInWorld = saveData.clearedStages.filter(
+    s => s >= currentWorld * STAGES_PER_WORLD + 1 && s <= (currentWorld + 1) * STAGES_PER_WORLD
+  ).length;
+  if (clearedInWorld >= STAGES_PER_WORLD && currentWorld + 1 < WORLDS.length) {
+    currentWorld++;
+  }
+  stageScrollY = 0; stageScrollTarget = 0;
 }
 
 function drawGame() {
