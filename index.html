@@ -2114,23 +2114,21 @@ function updateGame() {
             if (Math.random() < 0.3) rocketCount++;
             questionsNeeded--;
             gamePhase = 'quizResult';
-            quizResultTimer = 60;
+            quizResultTimer = 25; // 正解→素早くロケットへ
           } else {
             // Wrong
             sfxWrong();
             saveData.stats.totalQuestions++;
             quizAttempt++;
             if (quizAttempt >= 2) {
-              // Give rocket anyway, show correct
-              rocketCount++;
-              questionsNeeded--;
+              // 2回間違え: 正解を表示するがロケットなし
               gamePhase = 'quizResult';
-              quizResultTimer = 90; // longer to show correct answer
+              quizResultTimer = 60; // 正解表示を見せる
             } else {
               // Hint: disable this choice
               quizData.disabledChoices.push(i);
               gamePhase = 'quizResult';
-              quizResultTimer = 45;
+              quizResultTimer = 30;
             }
           }
         }
@@ -2143,12 +2141,19 @@ function updateGame() {
         // Back to same quiz with hint
         gamePhase = 'quiz';
         selectedAnswer = -1;
-      } else {
+      } else if (rocketCount > 0) {
         // Got rocket(s) - auto-fire one immediately
         gamePhase = 'rocketFire';
         sfxLaunch();
         rocketCount--;
         rocketAnim = { x: DESIGN_W / 2, y: 580, targetY: 160, progress: 0 };
+      } else {
+        // 2回間違えてロケットなし → 氷が少し回復＋次の問題へ
+        iceHP = Math.min(iceMaxHP, iceHP + 10);
+        generateQuiz();
+        gamePhase = 'quiz';
+        selectedAnswer = -1;
+        quizAttempt = 0;
       }
     }
   } else if (gamePhase === 'rocketReady') {
