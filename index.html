@@ -1920,21 +1920,73 @@ function generateQuiz() {
     }
 
   } else if (type === 'katakana') {
-    // Show hiragana, choose matching katakana
-    const pairs = [
+    const allPairs = [
       { h: 'あ', k: 'ア' }, { h: 'い', k: 'イ' }, { h: 'う', k: 'ウ' }, { h: 'え', k: 'エ' }, { h: 'お', k: 'オ' },
       { h: 'か', k: 'カ' }, { h: 'き', k: 'キ' }, { h: 'く', k: 'ク' }, { h: 'け', k: 'ケ' }, { h: 'こ', k: 'コ' },
       { h: 'さ', k: 'サ' }, { h: 'し', k: 'シ' }, { h: 'す', k: 'ス' }, { h: 'せ', k: 'セ' }, { h: 'そ', k: 'ソ' },
       { h: 'た', k: 'タ' }, { h: 'ち', k: 'チ' }, { h: 'つ', k: 'ツ' }, { h: 'て', k: 'テ' }, { h: 'と', k: 'ト' },
       { h: 'な', k: 'ナ' }, { h: 'に', k: 'ニ' }, { h: 'ぬ', k: 'ヌ' }, { h: 'ね', k: 'ネ' }, { h: 'の', k: 'ノ' },
+      { h: 'は', k: 'ハ' }, { h: 'ひ', k: 'ヒ' }, { h: 'ふ', k: 'フ' }, { h: 'へ', k: 'ヘ' }, { h: 'ほ', k: 'ホ' },
+      { h: 'ま', k: 'マ' }, { h: 'み', k: 'ミ' }, { h: 'む', k: 'ム' }, { h: 'め', k: 'メ' }, { h: 'も', k: 'モ' },
+      { h: 'や', k: 'ヤ' }, { h: 'ゆ', k: 'ユ' }, { h: 'よ', k: 'ヨ' },
+      { h: 'ら', k: 'ラ' }, { h: 'り', k: 'リ' }, { h: 'る', k: 'ル' }, { h: 'れ', k: 'レ' }, { h: 'ろ', k: 'ロ' },
+      { h: 'わ', k: 'ワ' }, { h: 'を', k: 'ヲ' }, { h: 'ん', k: 'ン' },
     ];
-    const correct = pairs[Math.floor(Math.random() * pairs.length)];
-    const wrongs = pairs.filter(p => p.k !== correct.k);
-    shuffleArray(wrongs);
-    const choices = shuffleArray([correct.k, wrongs[0].k, wrongs[1].k]);
-    quizData = { type: 'direction', question: correct.h,
-      questionLabel: 'おなじ もじの カタカナは？', choices,
-      correctIndex: choices.indexOf(correct.k), disabledChoices: [] };
+    // ステージに応じて使う文字数を段階的に増やす
+    const kataLevel = stageId - 45; // カタカナはS45で解禁
+    let pairCount;
+    if (kataLevel <= 10) pairCount = 10;       // あ〜こ行
+    else if (kataLevel <= 20) pairCount = 15;  // +さ行
+    else if (kataLevel <= 30) pairCount = 20;  // +た行
+    else if (kataLevel <= 40) pairCount = 25;  // +な行
+    else if (kataLevel <= 55) pairCount = 30;  // +は行
+    else if (kataLevel <= 70) pairCount = 35;  // +ま行
+    else if (kataLevel <= 85) pairCount = 38;  // +や行
+    else if (kataLevel <= 100) pairCount = 43; // +ら行
+    else pairCount = allPairs.length;           // +わをん（全46文字）
+    const pairs = allPairs.slice(0, pairCount);
+
+    // 50%: ひらがな→カタカナ、30%: イラスト→カタカナ、20%: カタカナ→ひらがな
+    const subType = Math.random();
+    if (subType < 0.3) {
+      // イラスト→カタカナ選択（picture問題の使い回し）
+      const withImages = PICTURE_QUIZ_ALL.filter(p => p.drawing);
+      if (withImages.length > 0) {
+        const item = withImages[Math.floor(Math.random() * withImages.length)];
+        // ひらがなの答えをカタカナに変換
+        const toKatakana = s => s.split('').map(c => {
+          const p = allPairs.find(p => p.h === c);
+          return p ? p.k : c;
+        }).join('');
+        const kataWord = toKatakana(item.word);
+        const kataWrongs = item.wrongs.map(w => toKatakana(w));
+        const choices = shuffleArray([kataWord, ...kataWrongs]);
+        quizData = { type: 'picture', question: kataWord,
+          drawing: item.drawing || null,
+          questionLabel: 'カタカナで こたえてね！', choices,
+          correctIndex: choices.indexOf(kataWord), disabledChoices: [] };
+        return;
+      }
+    }
+    if (subType < 0.8) {
+      // ひらがな→カタカナ
+      const correct = pairs[Math.floor(Math.random() * pairs.length)];
+      const wrongs = pairs.filter(p => p.k !== correct.k);
+      shuffleArray(wrongs);
+      const choices = shuffleArray([correct.k, wrongs[0].k, wrongs[1].k]);
+      quizData = { type: 'direction', question: correct.h,
+        questionLabel: 'おなじ もじの カタカナは？', choices,
+        correctIndex: choices.indexOf(correct.k), disabledChoices: [] };
+    } else {
+      // カタカナ→ひらがな（逆パターン）
+      const correct = pairs[Math.floor(Math.random() * pairs.length)];
+      const wrongs = pairs.filter(p => p.h !== correct.h);
+      shuffleArray(wrongs);
+      const choices = shuffleArray([correct.h, wrongs[0].h, wrongs[1].h]);
+      quizData = { type: 'direction', question: correct.k,
+        questionLabel: 'おなじ もじの ひらがなは？', choices,
+        correctIndex: choices.indexOf(correct.h), disabledChoices: [] };
+    }
 
   } else if (type === 'sequence') {
     // Number sequence: _, 2, 3 or 3, _, 5
