@@ -1253,6 +1253,7 @@ function generateQuiz() {
   if (stageId >= 15 && mode !== 'letters') types.push('subtract'); // S15+
   if (stageId >= 20) types.push('color');             // S20+: identify colors
   if (stageId >= 30) types.push('shape');             // S30+: identify shapes
+  if (stageId >= 25) types.push('compare');            // S25+: big/small, long/short, more/less
   if (stageId >= 40 && mode !== 'numbers') types.push('katakana'); // S40+: katakana match
   if (stageId >= 50) types.push('sequence');          // S50+: number sequence
 
@@ -1384,6 +1385,43 @@ function generateQuiz() {
     const choices = shuffleArray([correct.name, wrongs[0].name, wrongs[1].name]);
     quizData = { type: 'shape', shapeDraw: correct.draw, question: 'このかたちは？',
       choices, correctIndex: choices.indexOf(correct.name), disabledChoices: [] };
+
+  } else if (type === 'compare') {
+    // Comparison: big/small, long/short, many/few, or number comparison
+    const subtype = Math.floor(Math.random() * 4);
+    if (subtype === 0) {
+      // Big vs small circles
+      const bigSide = Math.random() < 0.5 ? 'ひだり' : 'みぎ';
+      const choices = shuffleArray(['ひだり', 'みぎ']);
+      quizData = { type: 'compare_size', bigSide, question: 'おおきいのは？',
+        choices: [...choices, 'おなじ'], correctIndex: choices.indexOf(bigSide), disabledChoices: [] };
+    } else if (subtype === 1) {
+      // Long vs short lines
+      const longSide = Math.random() < 0.5 ? 'ひだり' : 'みぎ';
+      const choices = shuffleArray(['ひだり', 'みぎ']);
+      quizData = { type: 'compare_length', longSide, question: 'ながいのは？',
+        choices: [...choices, 'おなじ'], correctIndex: choices.indexOf(longSide), disabledChoices: [] };
+    } else if (subtype === 2) {
+      // Many vs few dots
+      const a = 2 + Math.floor(Math.random() * 4);
+      const b = a + 1 + Math.floor(Math.random() * 3);
+      const manySide = Math.random() < 0.5 ? 'ひだり' : 'みぎ';
+      const leftCount = manySide === 'ひだり' ? b : a;
+      const rightCount = manySide === 'みぎ' ? b : a;
+      const choices = shuffleArray(['ひだり', 'みぎ']);
+      quizData = { type: 'compare_many', leftCount, rightCount, question: 'おおいのは？',
+        choices: [...choices, 'おなじ'], correctIndex: choices.indexOf(manySide), disabledChoices: [] };
+    } else {
+      // Number comparison: which is bigger?
+      const a = 1 + Math.floor(Math.random() * (stageId >= 60 ? 19 : 9));
+      let b;
+      do { b = 1 + Math.floor(Math.random() * (stageId >= 60 ? 19 : 9)); } while (b === a);
+      const answer = a > b ? String(a) : String(b);
+      const choices = shuffleArray([String(a), String(b)]);
+      quizData = { type: 'direction', question: `${a}  と  ${b}`,
+        questionLabel: 'おおきいかずは？', choices: [...choices, 'おなじ'],
+        correctIndex: choices.indexOf(answer), disabledChoices: [] };
+    }
 
   } else if (type === 'katakana') {
     // Show hiragana, choose matching katakana
@@ -1829,6 +1867,39 @@ function drawGame() {
           const oy = 345 - (rows-1)*14 + row*28;
           ctx.fillStyle = items[ci];
           ctx.beginPath(); ctx.arc(ox, oy, 10, 0, Math.PI*2); ctx.fill();
+        }
+        ctx.fillStyle = '#666'; ctx.font = 'bold 18px sans-serif';
+        ctx.textAlign = 'center'; ctx.fillText(quizData.question, DESIGN_W/2, 400);
+      } else if (quizData.type === 'compare_size') {
+        const bigR = 28, smallR = 14;
+        const leftR = quizData.bigSide === 'ひだり' ? bigR : smallR;
+        const rightR = quizData.bigSide === 'みぎ' ? bigR : smallR;
+        ctx.fillStyle = '#FF7043';
+        ctx.beginPath(); ctx.arc(DESIGN_W/2 - 60, 355, leftR, 0, Math.PI*2); ctx.fill();
+        ctx.fillStyle = '#42A5F5';
+        ctx.beginPath(); ctx.arc(DESIGN_W/2 + 60, 355, rightR, 0, Math.PI*2); ctx.fill();
+        ctx.fillStyle = '#666'; ctx.font = 'bold 18px sans-serif';
+        ctx.textAlign = 'center'; ctx.fillText(quizData.question, DESIGN_W/2, 400);
+      } else if (quizData.type === 'compare_length') {
+        const longW = 100, shortW = 40;
+        const leftW = quizData.longSide === 'ひだり' ? longW : shortW;
+        const rightW = quizData.longSide === 'みぎ' ? longW : shortW;
+        ctx.fillStyle = '#FF7043';
+        ctx.fillRect(DESIGN_W/2 - 120, 350, leftW, 12);
+        ctx.fillStyle = '#42A5F5';
+        ctx.fillRect(DESIGN_W/2 + 20, 350, rightW, 12);
+        ctx.fillStyle = '#666'; ctx.font = 'bold 18px sans-serif';
+        ctx.textAlign = 'center'; ctx.fillText(quizData.question, DESIGN_W/2, 400);
+      } else if (quizData.type === 'compare_many') {
+        // Left dots
+        for (let ci = 0; ci < quizData.leftCount; ci++) {
+          ctx.fillStyle = '#FF7043';
+          ctx.beginPath(); ctx.arc(DESIGN_W/2 - 80 + (ci%3)*18, 340 + Math.floor(ci/3)*20, 7, 0, Math.PI*2); ctx.fill();
+        }
+        // Right dots
+        for (let ci = 0; ci < quizData.rightCount; ci++) {
+          ctx.fillStyle = '#42A5F5';
+          ctx.beginPath(); ctx.arc(DESIGN_W/2 + 40 + (ci%3)*18, 340 + Math.floor(ci/3)*20, 7, 0, Math.PI*2); ctx.fill();
         }
         ctx.fillStyle = '#666'; ctx.font = 'bold 18px sans-serif';
         ctx.textAlign = 'center'; ctx.fillText(quizData.question, DESIGN_W/2, 400);
