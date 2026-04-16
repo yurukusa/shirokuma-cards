@@ -284,32 +284,64 @@ for (let i = 1; i <= 200; i++) {
   STAGES.push({ id: i, iceHP, rockets, level, drops });
 }
 
-// Picture-name quiz: show a picture, choose the correct name
-// Each item: { word, drawing, wrongs: [wrong answers] }
-const PICTURE_QUIZ = {
-  1: [
-    { word: 'くま', drawing: 'bear', wrongs: ['いぬ', 'ねこ'] },
-    { word: 'いぬ', drawing: 'dog', wrongs: ['くま', 'ねこ'] },
-    { word: 'あめ', drawing: 'rain', wrongs: ['ほし', 'はな'] },
-    { word: 'おに', drawing: 'oni', wrongs: ['くま', 'さかな'] },
-  ],
-  2: [
-    { word: 'かに', drawing: 'crab', wrongs: ['さかな', 'たこ'] },
-    { word: 'さかな', drawing: 'fish', wrongs: ['かに', 'くま'] },
-    { word: 'きつね', drawing: 'fox', wrongs: ['いぬ', 'ねこ'] },
-    { word: 'しか', drawing: 'deer', wrongs: ['いぬ', 'くま'] },
-    { word: 'けーき', drawing: 'cake', wrongs: ['すいか', 'はな'] },
-    { word: 'すいか', drawing: 'watermelon', wrongs: ['けーき', 'ほし'] },
-  ],
-  3: [
-    { word: 'たこ', drawing: 'octopus', wrongs: ['さかな', 'かに'] },
-    { word: 'ねこ', drawing: 'cat', wrongs: ['いぬ', 'きつね'] },
-    { word: 'つき', drawing: 'moon', wrongs: ['ほし', 'あめ'] },
-    { word: 'はな', drawing: 'flower', wrongs: ['ほし', 'つき'] },
-    { word: 'ほし', drawing: 'star', wrongs: ['つき', 'はな'] },
-    { word: 'りんご', drawing: 'apple', wrongs: ['すいか', 'けーき'] },
-  ],
-};
+// Picture-name quiz: all items in one pool (covers 50-on broadly)
+// Items with 'drawing' key use AI images; others use Canvas fallback
+const PICTURE_QUIZ_ALL = [
+  // あ行
+  { word: 'あめ', drawing: 'rain', wrongs: ['ほし', 'はな'] },
+  { word: 'いぬ', drawing: 'dog', wrongs: ['くま', 'ねこ'] },
+  { word: 'うみ', wrongs: ['やま', 'かわ'] },
+  { word: 'えんぴつ', wrongs: ['けしごむ', 'ほん'] },
+  { word: 'おに', drawing: 'oni', wrongs: ['くま', 'さかな'] },
+  // か行
+  { word: 'かに', drawing: 'crab', wrongs: ['さかな', 'たこ'] },
+  { word: 'きつね', drawing: 'fox', wrongs: ['いぬ', 'ねこ'] },
+  { word: 'くま', drawing: 'bear', wrongs: ['いぬ', 'ねこ'] },
+  { word: 'けーき', drawing: 'cake', wrongs: ['すいか', 'はな'] },
+  { word: 'こおり', wrongs: ['ほのお', 'みず'] },
+  // さ行
+  { word: 'さかな', drawing: 'fish', wrongs: ['かに', 'くま'] },
+  { word: 'しか', drawing: 'deer', wrongs: ['いぬ', 'くま'] },
+  { word: 'すいか', drawing: 'watermelon', wrongs: ['けーき', 'りんご'] },
+  { word: 'せみ', wrongs: ['とんぼ', 'ちょう'] },
+  { word: 'そら', wrongs: ['うみ', 'やま'] },
+  // た行
+  { word: 'たこ', drawing: 'octopus', wrongs: ['さかな', 'かに'] },
+  { word: 'ちょう', wrongs: ['とんぼ', 'せみ'] },
+  { word: 'つき', drawing: 'moon', wrongs: ['ほし', 'たいよう'] },
+  { word: 'てんとうむし', wrongs: ['かぶとむし', 'ちょう'] },
+  { word: 'とり', wrongs: ['さかな', 'むし'] },
+  // な行
+  { word: 'なす', wrongs: ['にんじん', 'きゅうり'] },
+  { word: 'にじ', wrongs: ['くも', 'あめ'] },
+  { word: 'ぬいぐるみ', wrongs: ['ほん', 'ぼーる'] },
+  { word: 'ねこ', drawing: 'cat', wrongs: ['いぬ', 'きつね'] },
+  { word: 'のり', wrongs: ['はさみ', 'えんぴつ'] },
+  // は行
+  { word: 'はな', drawing: 'flower', wrongs: ['ほし', 'つき'] },
+  { word: 'ひまわり', wrongs: ['ちゅーりっぷ', 'ばら'] },
+  { word: 'ふうせん', wrongs: ['ぼーる', 'たまご'] },
+  { word: 'へび', wrongs: ['かえる', 'とかげ'] },
+  { word: 'ほし', drawing: 'star', wrongs: ['つき', 'はな'] },
+  // ま行
+  { word: 'まめ', wrongs: ['こめ', 'むぎ'] },
+  { word: 'みかん', wrongs: ['りんご', 'ばなな'] },
+  { word: 'むしめがね', wrongs: ['めがね', 'ぼうし'] },
+  { word: 'めだか', wrongs: ['きんぎょ', 'さかな'] },
+  { word: 'もも', wrongs: ['りんご', 'みかん'] },
+  // や行
+  { word: 'やま', wrongs: ['うみ', 'かわ'] },
+  { word: 'ゆき', wrongs: ['あめ', 'かぜ'] },
+  { word: 'ようふく', wrongs: ['くつ', 'ぼうし'] },
+  // ら行
+  { word: 'らいおん', wrongs: ['とら', 'くま'] },
+  { word: 'りんご', drawing: 'apple', wrongs: ['みかん', 'もも'] },
+  { word: 'るびー', wrongs: ['だいやもんど', 'ほし'] },
+  { word: 'れもん', wrongs: ['みかん', 'りんご'] },
+  { word: 'ろけっと', wrongs: ['ひこうき', 'ふね'] },
+  // わ行
+  { word: 'わに', wrongs: ['かめ', 'へび'] },
+];
 
 // ============================================================
 // 6. Particle System
@@ -1266,6 +1298,9 @@ let rocketCount = 0;
 let questionsNeeded = 0;
 let gamePhase = 'quiz'; // quiz, quizResult, rocketReady, rocketFire, iceBreak, rescue, cardGet, synthesis
 let quizData = null;
+let lastQuizType = '';
+let lastQuizKey = '';  // prevents same question twice in a row
+let isFirstQuizOfStage = true;
 let quizAttempt = 0;
 let quizResultTimer = 0;
 let selectedAnswer = -1;
@@ -1295,6 +1330,7 @@ function startStage(stage) {
   synthResult = null;
   rocketQueue = [];
   isBonus = false;
+  isFirstQuizOfStage = true;
   particles.length = 0;
   generateQuiz();
   scene = 'game';
@@ -1313,23 +1349,54 @@ function generateQuiz() {
   const level = currentStage.level;
   const stageId = currentStage.id;
 
-  // Available question types - 15ステージごとに1種ずつ追加
-  const types = [];
-  if (mode !== 'letters') types.push('math');                        // S1: たしざん
-  if (mode !== 'numbers') types.push('picture');                     // S1: イラスト当て
-  if (stageId >= 15) types.push('direction');                         // S15: 方向
-  if (stageId >= 30) types.push('counting');                          // S30: かず数え
-  if (stageId >= 45 && mode !== 'letters') types.push('subtract');   // S45: ひきざん
-  if (stageId >= 60) types.push('color');                             // S60: いろ
-  if (stageId >= 75) types.push('compare');                           // S75: くらべる
-  if (stageId >= 90) types.push('shape');                             // S90: かたち
-  if (stageId >= 105 && mode !== 'numbers') types.push('katakana');  // S105: カタカナ
-  if (stageId >= 120) types.push('sequence');                         // S120: じゅんばん
-  if (stageId >= 135) types.push('multiply');                         // S135: かけざん
-  if (stageId >= 150) types.push('divide');                           // S150: わりざん
-  if (stageId >= 165) types.push('kanji');                            // S165: かんじ
+  // Question type unlock table: [stageThreshold, typeId, modeRestriction]
+  const unlockTable = [
+    [1, 'math', 'noLetters'], [1, 'picture', 'noNumbers'],
+    [15, 'direction', null], [30, 'counting', null],
+    [45, 'subtract', 'noLetters'], [60, 'color', null],
+    [75, 'compare', null], [90, 'shape', null],
+    [45, 'katakana', 'noNumbers'], [120, 'sequence', null],
+    [135, 'multiply', null], [150, 'divide', null], [165, 'kanji', null],
+  ];
 
-  const type = types[Math.floor(Math.random() * types.length)];
+  const types = [];
+  let newestType = null;
+  for (const [threshold, tid, restriction] of unlockTable) {
+    if (stageId < threshold) continue;
+    if (restriction === 'noLetters' && mode === 'letters') continue;
+    if (restriction === 'noNumbers' && mode === 'numbers') continue;
+    types.push(tid);
+    if (stageId >= threshold && stageId < threshold + 15) newestType = tid;
+  }
+
+  let type;
+  // First quiz of a stage where a new type unlocked: force that type
+  if (isFirstQuizOfStage && newestType && stageId % 15 === 0) {
+    type = newestType;
+  } else {
+    // Weighted selection: newer types more likely, basic types less likely at high stages
+    const weights = types.map(t => {
+      const entry = unlockTable.find(e => e[1] === t);
+      const age = stageId - entry[0]; // how long since unlocked
+      // Newer types get higher weight; old basics get lower weight at high stages
+      if (age < 15) return 3;  // just unlocked: high chance
+      if (age < 45) return 2;  // recent: normal
+      return 1;                // old: lower but still possible (review)
+    });
+    const totalW = weights.reduce((a, b) => a + b, 0);
+    let r = Math.random() * totalW;
+    type = types[types.length - 1];
+    for (let i = 0; i < types.length; i++) {
+      r -= weights[i];
+      if (r <= 0) { type = types[i]; break; }
+    }
+    // Avoid same type twice in a row
+    if (type === lastQuizType && types.length > 1) {
+      const others = types.filter(t => t !== lastQuizType);
+      type = others[Math.floor(Math.random() * others.length)];
+    }
+  }
+  isFirstQuizOfStage = false;
 
   if (type === 'math') {
     // 30% chance of easy review problem at higher stages
@@ -1611,21 +1678,26 @@ function generateQuiz() {
       correctIndex: choices.indexOf(item.reading), disabledChoices: [] };
 
   } else {
-    // Picture-name quiz
-    const pool = PICTURE_QUIZ[level] || PICTURE_QUIZ[1];
-    const item = pool[Math.floor(Math.random() * pool.length)];
+    // Picture-name quiz from unified pool
+    let item;
+    do {
+      item = PICTURE_QUIZ_ALL[Math.floor(Math.random() * PICTURE_QUIZ_ALL.length)];
+    } while (item.word === lastQuizKey && PICTURE_QUIZ_ALL.length > 1);
     const choices = shuffleArray([item.word, ...item.wrongs]);
+    lastQuizKey = item.word;
+    lastQuizType = 'picture';
 
     quizData = {
       type: 'picture',
       question: item.word,
-      drawing: item.drawing,
+      drawing: item.drawing || null,
       questionLabel: 'この え の なまえは？',
       choices,
       correctIndex: choices.indexOf(item.word),
       disabledChoices: []
     };
   }
+  lastQuizType = type;
   quizAttempt = 0;
   selectedAnswer = -1;
 }
@@ -2033,7 +2105,15 @@ function drawGame() {
         ctx.fillStyle = 'rgba(255,255,255,0.85)';
         drawRoundRect(30, 310, DESIGN_W - 60, 115, 12);
         ctx.fill();
-        drawWordPicture(DESIGN_W / 2, 355, quizData.drawing, 80);
+        if (quizData.drawing) {
+          drawWordPicture(DESIGN_W / 2, 355, quizData.drawing, 80);
+        } else {
+          // No AI image: show word's first char large as hint
+          ctx.fillStyle = '#FF7043';
+          ctx.font = 'bold 48px sans-serif';
+          ctx.textAlign = 'center';
+          ctx.fillText(quizData.question[0] + '...', DESIGN_W / 2, 365);
+        }
         ctx.fillStyle = '#666';
         ctx.font = 'bold 18px sans-serif';
         ctx.textAlign = 'center';
