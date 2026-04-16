@@ -817,6 +817,171 @@ function drawWordPicture(cx, cy, type, size) {
 
 function drawMaterialIcon(cx, cy, matId, size) {
   const s = size;
+  // Unique material icons based on name/theme
+  const matIcons = {
+    // koguma materials
+    koguma_foot: (cx,cy,s) => { // paw print
+      ctx.fillStyle = '#8D6E63';
+      ctx.beginPath(); ctx.ellipse(cx, cy+s*0.1, s*0.2, s*0.25, 0, 0, Math.PI*2); ctx.fill();
+      ctx.beginPath(); ctx.arc(cx-s*0.15, cy-s*0.2, s*0.08, 0, Math.PI*2); ctx.fill();
+      ctx.beginPath(); ctx.arc(cx+s*0.15, cy-s*0.2, s*0.08, 0, Math.PI*2); ctx.fill();
+      ctx.beginPath(); ctx.arc(cx, cy-s*0.28, s*0.06, 0, Math.PI*2); ctx.fill();
+    },
+    koguma_fur: (cx,cy,s) => { // fluffy ball
+      ctx.fillStyle = '#F5F5F5'; ctx.beginPath(); ctx.arc(cx, cy, s*0.25, 0, Math.PI*2); ctx.fill();
+      ctx.strokeStyle = '#DDD'; ctx.lineWidth = 1;
+      for (let i = 0; i < 6; i++) { const a = i*Math.PI/3; ctx.beginPath(); ctx.moveTo(cx,cy); ctx.lineTo(cx+Math.cos(a)*s*0.3,cy+Math.sin(a)*s*0.3); ctx.stroke(); }
+    },
+    koguma_ribbon: (cx,cy,s) => { // red ribbon
+      ctx.fillStyle = '#EF5350';
+      ctx.beginPath(); ctx.ellipse(cx-s*0.12, cy, s*0.15, s*0.1, -0.3, 0, Math.PI*2); ctx.fill();
+      ctx.beginPath(); ctx.ellipse(cx+s*0.12, cy, s*0.15, s*0.1, 0.3, 0, Math.PI*2); ctx.fill();
+      ctx.fillStyle = '#C62828'; ctx.beginPath(); ctx.arc(cx, cy, s*0.06, 0, Math.PI*2); ctx.fill();
+    },
+    // osanpo materials
+    osanpo_scarf: (cx,cy,s) => { // red scarf
+      ctx.fillStyle = '#EF5350'; ctx.fillRect(cx-s*0.25, cy-s*0.08, s*0.5, s*0.16);
+      ctx.fillRect(cx+s*0.1, cy+s*0.05, s*0.1, s*0.25);
+      ctx.strokeStyle = '#C62828'; ctx.lineWidth = 1; ctx.strokeRect(cx-s*0.25, cy-s*0.08, s*0.5, s*0.16);
+    },
+    osanpo_leaf: (cx,cy,s) => { // green leaf
+      ctx.fillStyle = '#66BB6A'; ctx.beginPath(); ctx.ellipse(cx, cy, s*0.12, s*0.25, 0.3, 0, Math.PI*2); ctx.fill();
+      ctx.strokeStyle = '#2E7D32'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(cx-s*0.05,cy+s*0.2); ctx.lineTo(cx+s*0.05,cy-s*0.2); ctx.stroke();
+    },
+    osanpo_bell: (cx,cy,s) => { // golden bell
+      ctx.fillStyle = '#FFD700'; ctx.beginPath(); ctx.arc(cx, cy-s*0.05, s*0.18, 0, Math.PI*2); ctx.fill();
+      ctx.fillStyle = '#FFA000'; ctx.beginPath(); ctx.arc(cx, cy+s*0.15, s*0.06, 0, Math.PI*2); ctx.fill();
+      ctx.strokeStyle = '#E65100'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(cx,cy-s*0.25); ctx.lineTo(cx,cy-s*0.35); ctx.stroke();
+    },
+    // hoshizora materials
+    hoshi_dust: (cx,cy,s) => { // star fragment
+      ctx.fillStyle = '#FFD700'; for (let i = 0; i < 3; i++) {
+        const ox = (i-1)*s*0.18, oy = (i%2)*s*0.1;
+        ctx.beginPath(); for(let j=0;j<10;j++){const a=(j*36-90)*Math.PI/180;const r=j%2===0?s*0.1:s*0.04;if(j===0)ctx.moveTo(cx+ox+Math.cos(a)*r,cy+oy+Math.sin(a)*r);else ctx.lineTo(cx+ox+Math.cos(a)*r,cy+oy+Math.sin(a)*r);}ctx.fill();
+      }
+    },
+    hoshi_map: (cx,cy,s) => { // constellation map
+      ctx.fillStyle = '#1A237E'; drawRoundRect(cx-s*0.22, cy-s*0.25, s*0.44, s*0.5, 3); ctx.fill();
+      ctx.fillStyle = '#FFF'; for (let i = 0; i < 5; i++) { ctx.beginPath(); ctx.arc(cx+(i%3-1)*s*0.12, cy+(Math.floor(i/3)-0.5)*s*0.15, 2, 0, Math.PI*2); ctx.fill(); }
+      ctx.strokeStyle = '#FFF8'; ctx.lineWidth = 0.5; ctx.beginPath(); ctx.moveTo(cx-s*0.12,cy-s*0.1); ctx.lineTo(cx,cy+s*0.05); ctx.lineTo(cx+s*0.12,cy-s*0.1); ctx.stroke();
+    },
+    hoshi_tear: (cx,cy,s) => { // star teardrop
+      ctx.fillStyle = '#81D4FA'; ctx.beginPath(); ctx.moveTo(cx,cy-s*0.25); ctx.quadraticCurveTo(cx+s*0.15,cy,cx,cy+s*0.2); ctx.quadraticCurveTo(cx-s*0.15,cy,cx,cy-s*0.25); ctx.fill();
+      ctx.fillStyle = '#FFF8'; ctx.beginPath(); ctx.arc(cx-s*0.03,cy-s*0.05,s*0.04,0,Math.PI*2); ctx.fill();
+    },
+    // oyasumi materials
+    oyasu_pillow: (cx,cy,s) => { // pillow
+      ctx.fillStyle = '#E1BEE7'; drawRoundRect(cx-s*0.25, cy-s*0.12, s*0.5, s*0.24, 8); ctx.fill();
+      ctx.strokeStyle = '#CE93D8'; ctx.lineWidth = 1; ctx.stroke();
+    },
+    oyasu_blanket: (cx,cy,s) => { // blanket
+      ctx.fillStyle = '#90CAF9'; drawRoundRect(cx-s*0.22, cy-s*0.18, s*0.44, s*0.36, 4); ctx.fill();
+      ctx.fillStyle = '#64B5F6'; ctx.fillRect(cx-s*0.22, cy-s*0.18, s*0.44, s*0.08);
+    },
+    oyasu_moon: (cx,cy,s) => { // crescent moon
+      ctx.fillStyle = '#FFEB3B'; ctx.beginPath(); ctx.arc(cx,cy,s*0.22,0,Math.PI*2); ctx.fill();
+      ctx.fillStyle = '#E1BEE7'; ctx.beginPath(); ctx.arc(cx+s*0.1,cy-s*0.05,s*0.18,0,Math.PI*2); ctx.fill();
+    },
+    oyasu_lullaby: (cx,cy,s) => { // music notes
+      ctx.fillStyle = '#7E57C2';
+      ctx.beginPath(); ctx.arc(cx-s*0.1,cy+s*0.05,s*0.08,0,Math.PI*2); ctx.fill();
+      ctx.fillRect(cx-s*0.1+s*0.06,cy-s*0.2,2,s*0.25);
+      ctx.beginPath(); ctx.arc(cx+s*0.12,cy-s*0.05,s*0.07,0,Math.PI*2); ctx.fill();
+      ctx.fillRect(cx+s*0.12+s*0.05,cy-s*0.3,2,s*0.25);
+    },
+    // ousama materials
+    king_crown: (cx,cy,s) => { // golden crown
+      ctx.fillStyle = '#FFD700'; ctx.beginPath();
+      ctx.moveTo(cx-s*0.22,cy+s*0.1); ctx.lineTo(cx-s*0.22,cy-s*0.05); ctx.lineTo(cx-s*0.1,cy+s*0.05);
+      ctx.lineTo(cx,cy-s*0.15); ctx.lineTo(cx+s*0.1,cy+s*0.05); ctx.lineTo(cx+s*0.22,cy-s*0.05);
+      ctx.lineTo(cx+s*0.22,cy+s*0.1); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = '#EF5350'; ctx.beginPath(); ctx.arc(cx,cy-s*0.08,s*0.04,0,Math.PI*2); ctx.fill();
+    },
+    king_cape: (cx,cy,s) => { // red cape
+      ctx.fillStyle = '#D32F2F'; ctx.beginPath(); ctx.moveTo(cx-s*0.15,cy-s*0.2); ctx.lineTo(cx-s*0.25,cy+s*0.25);
+      ctx.lineTo(cx+s*0.25,cy+s*0.25); ctx.lineTo(cx+s*0.15,cy-s*0.2); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = '#FFF'; ctx.fillRect(cx-s*0.15,cy-s*0.2,s*0.3,s*0.06);
+    },
+    king_scepter: (cx,cy,s) => { // royal scepter
+      ctx.fillStyle = '#FFD700'; ctx.fillRect(cx-s*0.03,cy-s*0.15,s*0.06,s*0.4);
+      ctx.beginPath(); ctx.arc(cx,cy-s*0.2,s*0.1,0,Math.PI*2); ctx.fill();
+      ctx.fillStyle = '#42A5F5'; ctx.beginPath(); ctx.arc(cx,cy-s*0.2,s*0.05,0,Math.PI*2); ctx.fill();
+    },
+    king_throne: (cx,cy,s) => { // ice throne
+      ctx.fillStyle = '#B3E5FC'; ctx.fillRect(cx-s*0.2,cy-s*0.05,s*0.4,s*0.25);
+      ctx.fillRect(cx-s*0.2,cy-s*0.25,s*0.08,s*0.45); ctx.fillRect(cx+s*0.12,cy-s*0.25,s*0.08,s*0.45);
+      ctx.fillRect(cx-s*0.2,cy-s*0.25,s*0.4,s*0.08);
+    },
+    // ouji materials
+    ouji_light: (cx,cy,s) => { // aurora light
+      const colors = ['#E040FB','#7C4DFF','#40C4FF','#69F0AE'];
+      for (let i = 0; i < 4; i++) { ctx.strokeStyle = colors[i]; ctx.lineWidth = 2.5; ctx.globalAlpha = 0.7;
+        ctx.beginPath(); for (let x=-s*0.3;x<=s*0.3;x+=2){const y=Math.sin(x*0.2+i)*s*0.08;if(x===-s*0.3)ctx.moveTo(cx+x,cy+i*4-6+y);else ctx.lineTo(cx+x,cy+i*4-6+y);}ctx.stroke(); }
+      ctx.globalAlpha = 1;
+    },
+    ouji_crystal: (cx,cy,s) => { // rainbow crystal
+      ctx.fillStyle = '#CE93D8'; ctx.beginPath();
+      ctx.moveTo(cx,cy-s*0.28); ctx.lineTo(cx+s*0.18,cy); ctx.lineTo(cx+s*0.1,cy+s*0.2);
+      ctx.lineTo(cx-s*0.1,cy+s*0.2); ctx.lineTo(cx-s*0.18,cy); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = '#FFF4'; ctx.beginPath(); ctx.moveTo(cx,cy-s*0.28); ctx.lineTo(cx+s*0.05,cy); ctx.lineTo(cx-s*0.05,cy); ctx.fill();
+    },
+    ouji_wing: (cx,cy,s) => { // light wing
+      ctx.fillStyle = '#E1BEE7'; ctx.beginPath();
+      ctx.moveTo(cx,cy); ctx.quadraticCurveTo(cx-s*0.3,cy-s*0.3,cx-s*0.05,cy-s*0.3);
+      ctx.quadraticCurveTo(cx+s*0.15,cy-s*0.25,cx,cy); ctx.fill();
+      ctx.fillStyle = '#F3E5F5'; ctx.beginPath();
+      ctx.moveTo(cx,cy); ctx.quadraticCurveTo(cx+s*0.3,cy-s*0.2,cx+s*0.1,cy-s*0.25);
+      ctx.quadraticCurveTo(cx-s*0.05,cy-s*0.15,cx,cy); ctx.fill();
+    },
+    ouji_tiara: (cx,cy,s) => { // star tiara
+      ctx.fillStyle = '#B39DDB'; drawRoundRect(cx-s*0.22,cy+s*0.02,s*0.44,s*0.08,4); ctx.fill();
+      ctx.fillStyle = '#FFD700'; ctx.beginPath();
+      for(let j=0;j<10;j++){const a=(j*36-90)*Math.PI/180;const r=j%2===0?s*0.15:s*0.06;if(j===0)ctx.moveTo(cx+Math.cos(a)*r,cy-s*0.08+Math.sin(a)*r);else ctx.lineTo(cx+Math.cos(a)*r,cy-s*0.08+Math.sin(a)*r);}ctx.fill();
+    },
+    ouji_gem: (cx,cy,s) => { // sky gem
+      ctx.fillStyle = '#64B5F6'; ctx.beginPath();
+      ctx.moveTo(cx,cy-s*0.22); ctx.lineTo(cx+s*0.2,cy-s*0.05); ctx.lineTo(cx+s*0.12,cy+s*0.18);
+      ctx.lineTo(cx-s*0.12,cy+s*0.18); ctx.lineTo(cx-s*0.2,cy-s*0.05); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = '#FFF4'; ctx.beginPath(); ctx.moveTo(cx,cy-s*0.22); ctx.lineTo(cx+s*0.08,cy); ctx.lineTo(cx-s*0.08,cy); ctx.fill();
+    },
+    // densetsu materials
+    den_wing: (cx,cy,s) => { // legendary wing
+      ctx.fillStyle = '#FFD700'; ctx.beginPath();
+      ctx.moveTo(cx,cy+s*0.1); ctx.quadraticCurveTo(cx-s*0.35,cy-s*0.2,cx-s*0.1,cy-s*0.3);
+      ctx.quadraticCurveTo(cx+s*0.1,cy-s*0.15,cx,cy+s*0.1); ctx.fill();
+      ctx.beginPath();
+      ctx.moveTo(cx,cy+s*0.1); ctx.quadraticCurveTo(cx+s*0.35,cy-s*0.2,cx+s*0.1,cy-s*0.3);
+      ctx.quadraticCurveTo(cx-s*0.1,cy-s*0.15,cx,cy+s*0.1); ctx.fill();
+    },
+    den_halo: (cx,cy,s) => { // rainbow ring
+      ctx.strokeStyle = '#FFD700'; ctx.lineWidth = 3; ctx.beginPath(); ctx.ellipse(cx,cy,s*0.25,s*0.1,0,0,Math.PI*2); ctx.stroke();
+      ctx.strokeStyle = '#E040FB'; ctx.lineWidth = 2; ctx.beginPath(); ctx.ellipse(cx,cy-s*0.02,s*0.2,s*0.08,0,0,Math.PI*2); ctx.stroke();
+    },
+    den_heart: (cx,cy,s) => { // eternal heart
+      ctx.fillStyle = '#E040FB'; ctx.beginPath();
+      ctx.moveTo(cx,cy+s*0.15); ctx.bezierCurveTo(cx-s*0.3,cy-s*0.05,cx-s*0.15,cy-s*0.25,cx,cy-s*0.1);
+      ctx.bezierCurveTo(cx+s*0.15,cy-s*0.25,cx+s*0.3,cy-s*0.05,cx,cy+s*0.15); ctx.fill();
+      ctx.fillStyle = '#FFF4'; ctx.beginPath(); ctx.arc(cx-s*0.08,cy-s*0.1,s*0.04,0,Math.PI*2); ctx.fill();
+    },
+    den_star: (cx,cy,s) => { // miracle star
+      ctx.fillStyle = '#FFD700'; ctx.beginPath();
+      for(let j=0;j<10;j++){const a=(j*36-90)*Math.PI/180;const r=j%2===0?s*0.28:s*0.12;if(j===0)ctx.moveTo(cx+Math.cos(a)*r,cy+Math.sin(a)*r);else ctx.lineTo(cx+Math.cos(a)*r,cy+Math.sin(a)*r);}ctx.fill();
+      ctx.fillStyle = '#FFF8'; ctx.beginPath(); ctx.arc(cx,cy,s*0.06,0,Math.PI*2); ctx.fill();
+    },
+    den_crown: (cx,cy,s) => { // legendary crown
+      ctx.fillStyle = '#E040FB'; ctx.beginPath();
+      ctx.moveTo(cx-s*0.25,cy+s*0.1); ctx.lineTo(cx-s*0.25,cy-s*0.08); ctx.lineTo(cx-s*0.12,cy+s*0.02);
+      ctx.lineTo(cx,cy-s*0.18); ctx.lineTo(cx+s*0.12,cy+s*0.02); ctx.lineTo(cx+s*0.25,cy-s*0.08);
+      ctx.lineTo(cx+s*0.25,cy+s*0.1); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = '#FFD700'; ctx.beginPath(); ctx.arc(cx,cy-s*0.1,s*0.05,0,Math.PI*2); ctx.fill();
+      ctx.beginPath(); ctx.arc(cx-s*0.15,cy-s*0.02,s*0.03,0,Math.PI*2); ctx.fill();
+      ctx.beginPath(); ctx.arc(cx+s*0.15,cy-s*0.02,s*0.03,0,Math.PI*2); ctx.fill();
+    },
+  };
+
+  if (matIcons[matId]) { matIcons[matId](cx, cy, s); return; }
+
+  // Legacy fallback for old material IDs
   if (matId === 'footprint') {
     // Paw print
     ctx.fillStyle = '#8D6E63';
@@ -1220,6 +1385,19 @@ function drawStageSelect() {
   if (currentWorld < Math.min(maxWorld, WORLDS.length - 1)) {
     ctx.fillStyle = world.text; ctx.font = 'bold 30px sans-serif';
     ctx.textAlign = 'center'; ctx.fillText('▶', DESIGN_W - 35, 48);
+    // If current world is fully cleared, show "next world" guide
+    const thisWorldCleared = saveData.clearedStages.filter(
+      s => s >= currentWorld * STAGES_PER_WORLD + 1 && s <= (currentWorld + 1) * STAGES_PER_WORLD
+    ).length >= STAGES_PER_WORLD;
+    if (thisWorldCleared) {
+      const nextW = WORLDS[Math.min(currentWorld + 1, WORLDS.length - 1)];
+      const pulse = Math.sin(sceneTimer * 0.08) * 0.3 + 0.7;
+      ctx.globalAlpha = pulse;
+      ctx.fillStyle = '#FF5722'; ctx.font = 'bold 16px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText(`▶ ${nextW.name} へ！`, DESIGN_W - 60, 70);
+      ctx.globalAlpha = 1;
+    }
   }
 
   // Progress for this world
@@ -2194,10 +2372,26 @@ function drawGame() {
     ctx.fillStyle = '#FFF';
     ctx.font = 'bold 28px sans-serif';
     ctx.textAlign = 'center';
-    // Milestone check
-    if (currentStage.id % 10 === 0) {
+    // World clear check (every 30 stages)
+    if (currentStage.id % STAGES_PER_WORLD === 0) {
+      const wIdx = getWorldForStage(currentStage.id);
+      const wName = WORLDS[Math.min(wIdx, WORLDS.length - 1)].name;
       ctx.fillStyle = '#FFD700';
-      ctx.font = 'bold 32px sans-serif';
+      ctx.font = 'bold 28px sans-serif';
+      ctx.fillText(`${wName} クリア！`, DESIGN_W / 2, 130);
+      if (wIdx + 1 < WORLDS.length) {
+        const nextW = WORLDS[wIdx + 1];
+        const pulse = Math.sin(sceneTimer * 0.08) * 0.3 + 0.7;
+        ctx.globalAlpha = pulse;
+        ctx.fillStyle = '#FFF';
+        ctx.font = 'bold 20px sans-serif';
+        ctx.fillText(`つぎ: ${nextW.name} かいほう！`, DESIGN_W / 2, 165);
+        ctx.globalAlpha = 1;
+      }
+      if (cardGetTimer < 60) spawnSparkles(DESIGN_W / 2, 140, 5);
+    } else if (currentStage.id % 10 === 0) {
+      ctx.fillStyle = '#FFD700';
+      ctx.font = 'bold 30px sans-serif';
       ctx.fillText(`${currentStage.id}めん クリア！`, DESIGN_W / 2, 160);
       if (cardGetTimer < 60) spawnSparkles(DESIGN_W / 2, 160, 3);
     }
