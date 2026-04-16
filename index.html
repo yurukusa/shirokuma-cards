@@ -1716,25 +1716,44 @@ function generateQuiz() {
   if (type === 'math') {
     // 30% chance of easy review problem at higher stages
     const effectiveStage = (stageId > 10 && Math.random() < 0.3) ? 1 + Math.floor(Math.random() * 10) : stageId;
-    let maxA, maxB, maxAnswer;
-    if (effectiveStage <= 5) { maxA = 3; maxB = 3; maxAnswer = 5; }
-    else if (effectiveStage <= 10) { maxA = 5; maxB = 5; maxAnswer = 8; }
-    else if (effectiveStage <= 20) { maxA = 7; maxB = 7; maxAnswer = 10; }
-    else if (effectiveStage <= 25) { maxA = 9; maxB = 5; maxAnswer = 14; }
-    else { maxA = 10; maxB = 9; maxAnswer = 19; }
-
     let a, b;
-    do {
-      a = 1 + Math.floor(Math.random() * maxA);
-      b = 1 + Math.floor(Math.random() * maxB);
-    } while (a + b > maxAnswer);
+    if (effectiveStage <= 5) {
+      // 1+1 ~ 3+3 = 最大6
+      a = 1 + Math.floor(Math.random() * 3);
+      b = 1 + Math.floor(Math.random() * 3);
+    } else if (effectiveStage <= 10) {
+      // 1+1 ~ 5+5 = 最大8
+      do { a = 1 + Math.floor(Math.random() * 5); b = 1 + Math.floor(Math.random() * 5); } while (a + b > 8);
+    } else if (effectiveStage <= 20) {
+      // 1+1 ~ 7+7 = 最大10
+      do { a = 1 + Math.floor(Math.random() * 7); b = 1 + Math.floor(Math.random() * 7); } while (a + b > 10);
+    } else if (effectiveStage <= 25) {
+      // 1+1 ~ 9+5 = 最大14（繰り上がり入門）
+      do { a = 1 + Math.floor(Math.random() * 9); b = 1 + Math.floor(Math.random() * 5); } while (a + b > 14);
+    } else if (effectiveStage <= 45) {
+      // 1+1 ~ 10+9 = 最大19（一桁+一桁の完成）
+      do { a = 1 + Math.floor(Math.random() * 10); b = 1 + Math.floor(Math.random() * 9); } while (a + b > 19);
+    } else if (effectiveStage <= 75) {
+      // 二桁+一桁: 10~30 + 1~9 = 最大39
+      a = 10 + Math.floor(Math.random() * 21);
+      b = 1 + Math.floor(Math.random() * 9);
+    } else if (effectiveStage <= 120) {
+      // 二桁+一桁（大きめ）: 10~50 + 1~9 = 最大59
+      a = 10 + Math.floor(Math.random() * 41);
+      b = 1 + Math.floor(Math.random() * 9);
+    } else {
+      // 二桁+二桁: 10~50 + 10~49 = 最大99
+      a = 10 + Math.floor(Math.random() * 41);
+      b = 10 + Math.floor(Math.random() * 40);
+      if (a + b > 99) b = 99 - a;
+    }
 
     const answer = a + b;
     const choices = [answer];
     while (choices.length < 3) {
-      const off = (Math.random() < 0.5 ? 1 : -1) * (1 + Math.floor(Math.random() * 3));
+      const off = (Math.random() < 0.5 ? 1 : -1) * (1 + Math.floor(Math.random() * (answer > 19 ? 5 : 3)));
       const wrong = answer + off;
-      if (wrong > 0 && wrong <= maxAnswer + 3 && !choices.includes(wrong)) choices.push(wrong);
+      if (wrong > 0 && !choices.includes(wrong)) choices.push(wrong);
     }
     shuffleArray(choices);
     quizData = { type: 'math', question: `${a} + ${b} = ?`, choices: choices.map(String),
