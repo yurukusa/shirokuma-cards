@@ -1824,7 +1824,12 @@ function generateQuiz() {
         if (w > 0 && w <= 10 && !choices.includes(w)) choices.push(w);
       }
       shuffleArray(choices);
-      quizData = { type: 'counting_mixed', targetCount, otherCount,
+      // シャッフル結果を事前に確定（描画時に毎フレーム変わるのを防ぐ）
+      const mixedItems = [];
+      for (let ci = 0; ci < targetCount; ci++) mixedItems.push('#EF5350');
+      for (let ci = 0; ci < otherCount; ci++) mixedItems.push('#42A5F5');
+      shuffleArray(mixedItems);
+      quizData = { type: 'counting_mixed', targetCount, otherCount, mixedItems,
         question: 'あかは いくつ？',
         choices: choices.map(String), correctIndex: choices.indexOf(targetCount), disabledChoices: [] };
     } else {
@@ -2442,11 +2447,8 @@ function drawGame() {
         const totalRed = isMixed ? quizData.targetCount : quizData.count;
         const totalBlue = isMixed ? quizData.otherCount : 0;
         const total = totalRed + totalBlue;
-        // Shuffle positions
-        const items = [];
-        for (let ci = 0; ci < totalRed; ci++) items.push('#EF5350');
-        for (let ci = 0; ci < totalBlue; ci++) items.push('#42A5F5');
-        shuffleArray(items);
+        // 事前にシャッフル済みの配列を使う（毎フレーム変わらない）
+        const items = isMixed ? quizData.mixedItems : Array(total).fill('#EF5350');
         const cols = Math.min(5, total);
         const rows = Math.ceil(total / cols);
         for (let ci = 0; ci < total; ci++) {
