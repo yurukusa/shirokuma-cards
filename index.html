@@ -126,8 +126,8 @@ const SAVE_KEY = 'shirokuma_cards_v1';
 const defaultSave = () => ({
   version: 1,
   clearedStages: [],
-  materials: { footprint: 0, fur: 0, ice: 0, star: 0 },
-  completedCards: { koguma: 0, osanpo: 0, hoshizora: 0 },
+  materials: { footprint: 0, fur: 0, ice: 0, star: 0, shell: 0, aurora: 0 },
+  completedCards: { koguma: 0, osanpo: 0, hoshizora: 0, oyasumi: 0, ousama: 0, ouji: 0, densetsu: 0 },
   settings: { questionMode: 'mixed', sound: true },
   stats: { totalQuestions: 0, totalCorrect: 0 }
 });
@@ -139,7 +139,13 @@ function loadGame() {
     const raw = localStorage.getItem(SAVE_KEY);
     if (raw) {
       const d = JSON.parse(raw);
-      if (d.version === 1) { saveData = d; soundEnabled = d.settings.sound; }
+      if (d.version === 1) {
+        saveData = d;
+        // Migrate: add new material/card keys if missing
+        for (const m of MATERIALS) { if (!(m.id in saveData.materials)) saveData.materials[m.id] = 0; }
+        for (const r of RECIPES) { if (!(r.id in saveData.completedCards)) saveData.completedCards[r.id] = 0; }
+        soundEnabled = d.settings.sound;
+      }
     }
   } catch (e) { /* ignore */ }
 }
@@ -157,14 +163,24 @@ loadGame();
 
 // Material types
 const MATERIALS = [
-  { id: 'footprint', name: 'しろくまのあしあと', emoji: '🐾', dropRate: 0.40 },
-  { id: 'fur',       name: 'ふわふわのけ',       emoji: '🧶', dropRate: 0.30 },
-  { id: 'ice',       name: 'キラキラのこおり',   emoji: '💎', dropRate: 0.20 },
-  { id: 'star',      name: 'ほしのしずく',       emoji: '⭐', dropRate: 0.10 },
+  { id: 'footprint', name: 'しろくまのあしあと', dropRate: 0.30 },
+  { id: 'fur',       name: 'ふわふわのけ',       dropRate: 0.25 },
+  { id: 'ice',       name: 'キラキラのこおり',   dropRate: 0.18 },
+  { id: 'star',      name: 'ほしのしずく',       dropRate: 0.10 },
+  { id: 'shell',     name: 'こおりのかいがら',   dropRate: 0.10 },
+  { id: 'aurora',    name: 'オーロラのひかり',   dropRate: 0.07 },
 ];
 
 // Completed cards (recipes sorted by rarity desc for priority)
 const RECIPES = [
+  { id: 'densetsu', name: 'でんせつのシロクマ', rarity: 7, stars: '★★★★★★★', label: 'でんせつ',
+    color: '#E040FB', recipe: { ice: 4, star: 3, shell: 3, aurora: 3 } },
+  { id: 'ouji', name: 'オーロラおうじ', rarity: 6, stars: '★★★★★★', label: 'ごくレア',
+    color: '#7C4DFF', recipe: { star: 2, shell: 2, aurora: 2 } },
+  { id: 'ousama', name: 'おうさまシロクマ', rarity: 5, stars: '★★★★★', label: 'ちょうレア',
+    color: '#FF6D00', recipe: { ice: 3, star: 2, shell: 1 } },
+  { id: 'oyasumi', name: 'おやすみシロクマ', rarity: 4, stars: '★★★★', label: 'とてもレア',
+    color: '#5C6BC0', recipe: { fur: 3, ice: 2, shell: 1 } },
   { id: 'hoshizora', name: 'ほしぞらシロクマ', rarity: 3, stars: '★★★', label: 'すごいレア',
     color: '#FFD700', recipe: { fur: 2, ice: 2, star: 1 } },
   { id: 'osanpo', name: 'おさんぽシロクマ', rarity: 2, stars: '★★', label: 'レア',
@@ -173,14 +189,20 @@ const RECIPES = [
     color: '#E0E0E0', recipe: { footprint: 2, fur: 1 } },
 ];
 
-// Stages
-const STAGES = [
-  { id: 1, iceHP: 30,  rockets: 3, level: 1, drops: 1 },
-  { id: 2, iceHP: 40,  rockets: 4, level: 1, drops: 1 },
-  { id: 3, iceHP: 50,  rockets: 5, level: 2, drops: 2 },
-  { id: 4, iceHP: 60,  rockets: 6, level: 2, drops: 2 },
-  { id: 5, iceHP: 80,  rockets: 8, level: 3, drops: 3 },
-];
+// 30 Stages - difficulty curve
+const STAGES = [];
+for (let i = 1; i <= 30; i++) {
+  let level, drops;
+  if (i <= 5) { level = 1; drops = 1; }
+  else if (i <= 10) { level = 1; drops = 2; }
+  else if (i <= 15) { level = 2; drops = 2; }
+  else if (i <= 20) { level = 2; drops = 3; }
+  else if (i <= 25) { level = 3; drops = 3; }
+  else { level = 3; drops = 4; }
+  const rockets = 3 + Math.floor(i * 0.5);
+  const iceHP = rockets * 10;
+  STAGES.push({ id: i, iceHP, rockets, level, drops });
+}
 
 // Picture-name quiz: show a picture, choose the correct name
 // Each item: { word, drawing, wrongs: [wrong answers] }
@@ -721,9 +743,41 @@ function drawMaterialIcon(cx, cy, matId, size) {
       else ctx.lineTo(cx+Math.cos(a)*r, cy+Math.sin(a)*r);
     }
     ctx.fill();
-    // Water drop below
     ctx.fillStyle = '#81D4FA';
     ctx.beginPath(); ctx.arc(cx, cy+s*0.15, s*0.08, 0, Math.PI*2); ctx.fill();
+  } else if (matId === 'shell') {
+    // Ice shell
+    ctx.fillStyle = '#B2EBF2';
+    ctx.beginPath();
+    ctx.arc(cx, cy, s*0.3, Math.PI, 0);
+    ctx.lineTo(cx+s*0.3, cy+s*0.1);
+    ctx.quadraticCurveTo(cx, cy+s*0.25, cx-s*0.3, cy+s*0.1);
+    ctx.closePath();
+    ctx.fill();
+    ctx.strokeStyle = '#4DD0E1'; ctx.lineWidth = 1.5; ctx.stroke();
+    // Ridges
+    ctx.strokeStyle = '#80DEEA'; ctx.lineWidth = 1;
+    for (let i = 0; i < 3; i++) {
+      ctx.beginPath();
+      ctx.arc(cx, cy+s*0.05, s*(0.12+i*0.07), Math.PI*1.1, Math.PI*1.9);
+      ctx.stroke();
+    }
+  } else if (matId === 'aurora') {
+    // Aurora light
+    const colors = ['#E040FB','#7C4DFF','#40C4FF','#69F0AE'];
+    for (let i = 0; i < 4; i++) {
+      ctx.strokeStyle = colors[i];
+      ctx.lineWidth = 3;
+      ctx.globalAlpha = 0.7;
+      ctx.beginPath();
+      for (let x = -s*0.35; x <= s*0.35; x += 2) {
+        const wavY = Math.sin(x*0.15 + i*0.8) * s*0.12;
+        if (x === -s*0.35) ctx.moveTo(cx+x, cy + i*5 - 8 + wavY);
+        else ctx.lineTo(cx+x, cy + i*5 - 8 + wavY);
+      }
+      ctx.stroke();
+    }
+    ctx.globalAlpha = 1;
   }
 }
 
@@ -904,27 +958,66 @@ function drawTitle() {
 }
 
 // ============================================================
-// 11. Stage Select Scene
+// 11. Stage Select Scene (scrollable)
 // ============================================================
+let stageScrollY = 0;
+let stageScrollTarget = 0;
+let stageDragStartY = -1;
+let stageDragLastY = -1;
+
+// Pointer events for scrolling
+canvas.addEventListener('pointermove', e => {
+  if (scene === 'stageSelect' && stageDragStartY >= 0) {
+    const p = toGameCoords(e.clientX, e.clientY);
+    const dy = p.y - stageDragLastY;
+    stageScrollTarget -= dy;
+    stageDragLastY = p.y;
+  }
+  if (scene === 'album' && albumDragStartY >= 0) {
+    const p = toGameCoords(e.clientX, e.clientY);
+    const dy = p.y - albumDragLastY;
+    albumScrollTarget -= dy;
+    albumDragLastY = p.y;
+  }
+});
+canvas.addEventListener('pointerdown', e => {
+  const p = toGameCoords(e.clientX, e.clientY);
+  if (scene === 'stageSelect') { stageDragStartY = p.y; stageDragLastY = p.y; }
+  if (scene === 'album') { albumDragStartY = p.y; albumDragLastY = p.y; }
+});
+canvas.addEventListener('pointerup', () => { stageDragStartY = -1; albumDragStartY = -1; });
+canvas.addEventListener('pointercancel', () => { stageDragStartY = -1; albumDragStartY = -1; });
+
 function updateStageSelect() {
+  // Smooth scroll
+  stageScrollY += (stageScrollTarget - stageScrollY) * 0.2;
+  const rows = Math.ceil(STAGES.length / 3);
+  const maxScroll = Math.max(0, rows * 100 + 80 - 500);
+  stageScrollTarget = Math.max(0, Math.min(maxScroll, stageScrollTarget));
+  stageScrollY = Math.max(0, Math.min(maxScroll, stageScrollY));
+
   if (inputTapped) {
-    for (let i = 0; i < STAGES.length; i++) {
-      const col = i % 3;
-      const row = Math.floor(i / 3);
-      const bx = 40 + col * 120, by = 200 + row * 140;
-      const r = 45;
-      if (hitCircle(inputX, inputY, bx + r, by + r, r)) {
-        // Can play if stage 1, or previous cleared
-        if (i === 0 || saveData.clearedStages.includes(i)) {
-          sfxButton();
-          startStage(STAGES[i]);
+    // Check if it was a tap (not a drag)
+    const dragDist = stageDragStartY >= 0 ? Math.abs(inputY - stageDragStartY) : 0;
+    if (dragDist < 10) {
+      for (let i = 0; i < STAGES.length; i++) {
+        const col = i % 3;
+        const row = Math.floor(i / 3);
+        const cx = 35 + col * 125 + 40;
+        const cy = 100 + row * 100 + 40 - stageScrollY;
+        const r = 38;
+        if (cy < 60 || cy > 600) continue; // off screen
+        if (hitCircle(inputX, inputY, cx, cy, r)) {
+          if (i === 0 || saveData.clearedStages.includes(i)) {
+            sfxButton();
+            startStage(STAGES[i]);
+          }
         }
       }
-    }
-    // Back
-    if (hitRect(inputX, inputY, 20, 630, 120, 45)) {
-      sfxButton();
-      scene = 'title';
+      if (hitRect(inputX, inputY, 20, 640, 120, 45)) {
+        sfxButton();
+        scene = 'title';
+      }
     }
   }
 }
@@ -937,64 +1030,89 @@ function drawStageSelect() {
   ctx.fillRect(0, 0, DESIGN_W, DESIGN_H);
 
   ctx.fillStyle = '#1565C0';
-  ctx.font = 'bold 30px sans-serif';
+  ctx.font = 'bold 26px sans-serif';
   ctx.textAlign = 'center';
-  ctx.fillText('ステージ えらび', DESIGN_W / 2, 80);
+  ctx.fillText('ステージ えらび', DESIGN_W / 2, 40);
 
-  // Bear guide
-  drawBear(DESIGN_W / 2, 140, 30, true);
+  // Progress
+  const cleared = saveData.clearedStages.length;
+  ctx.fillStyle = '#78909C';
+  ctx.font = '14px sans-serif';
+  ctx.fillText(`${cleared} / ${STAGES.length} クリア`, DESIGN_W / 2, 65);
+
+  // Clip scroll area
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(0, 80, DESIGN_W, 550);
+  ctx.clip();
 
   for (let i = 0; i < STAGES.length; i++) {
     const col = i % 3;
     const row = Math.floor(i / 3);
-    const cx = 40 + col * 120 + 45;
-    const cy = 200 + row * 140 + 45;
-    const r = 45;
-    const cleared = saveData.clearedStages.includes(STAGES[i].id);
+    const cx = 35 + col * 125 + 40;
+    const cy = 100 + row * 100 + 40 - stageScrollY;
+    const r = 38;
+
+    if (cy < 30 || cy > 680) continue; // culling
+
+    const isCleared = saveData.clearedStages.includes(STAGES[i].id);
     const locked = i > 0 && !saveData.clearedStages.includes(i);
 
-    // Circle
-    ctx.fillStyle = locked ? '#B0BEC5' : (cleared ? '#81C784' : '#4FC3F7');
+    // Color by zone
+    let baseColor;
+    if (locked) baseColor = '#B0BEC5';
+    else if (isCleared) baseColor = '#81C784';
+    else if (i < 10) baseColor = '#4FC3F7';
+    else if (i < 20) baseColor = '#FFB74D';
+    else baseColor = '#EF5350';
+
+    ctx.fillStyle = baseColor;
     ctx.beginPath();
     ctx.arc(cx, cy, r, 0, Math.PI * 2);
     ctx.fill();
-    ctx.strokeStyle = 'rgba(255,255,255,0.5)';
-    ctx.lineWidth = 3;
+    ctx.strokeStyle = 'rgba(255,255,255,0.4)';
+    ctx.lineWidth = 2;
     ctx.stroke();
 
-    // Number
-    ctx.fillStyle = locked ? '#78909C' : '#FFF';
-    ctx.font = 'bold 28px sans-serif';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     if (locked) {
-      // Draw lock icon
       ctx.fillStyle = '#78909C';
-      ctx.fillRect(cx - 8, cy - 2, 16, 12);
-      ctx.strokeStyle = '#78909C';
-      ctx.lineWidth = 2.5;
-      ctx.beginPath();
-      ctx.arc(cx, cy - 6, 7, Math.PI, 0);
-      ctx.stroke();
+      ctx.fillRect(cx - 7, cy - 1, 14, 10);
+      ctx.strokeStyle = '#78909C'; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.arc(cx, cy - 5, 6, Math.PI, 0); ctx.stroke();
     } else {
+      ctx.fillStyle = '#FFF';
+      ctx.font = 'bold 22px sans-serif';
       ctx.fillText(String(i + 1), cx, cy);
     }
 
-    // Star for cleared
-    if (cleared) {
+    if (isCleared) {
       ctx.fillStyle = '#FFD700';
       ctx.beginPath();
       for (let j = 0; j < 10; j++) {
         const a = (j * 36 - 90) * Math.PI / 180;
-        const sr = j % 2 === 0 ? 10 : 4;
-        if (j===0) ctx.moveTo(cx+Math.cos(a)*sr, cy-r-12+Math.sin(a)*sr);
-        else ctx.lineTo(cx+Math.cos(a)*sr, cy-r-12+Math.sin(a)*sr);
+        const sr = j % 2 === 0 ? 8 : 3;
+        if (j===0) ctx.moveTo(cx+Math.cos(a)*sr, cy-r-8+Math.sin(a)*sr);
+        else ctx.lineTo(cx+Math.cos(a)*sr, cy-r-8+Math.sin(a)*sr);
       }
       ctx.fill();
     }
   }
+  ctx.restore();
 
-  drawButton(20, 630, 120, 45, 'もどる', '#78909C', '#FFF', 18);
+  // Scroll indicator
+  const rows = Math.ceil(STAGES.length / 3);
+  const maxScroll = Math.max(1, rows * 100 + 80 - 500);
+  if (maxScroll > 0) {
+    const barH = 550 * (550 / (rows * 100 + 80));
+    const barY = 80 + (stageScrollY / maxScroll) * (550 - barH);
+    ctx.fillStyle = 'rgba(0,0,0,0.15)';
+    drawRoundRect(DESIGN_W - 8, barY, 5, barH, 2);
+    ctx.fill();
+  }
+
+  drawButton(20, 640, 120, 45, 'もどる', '#78909C', '#FFF', 18);
 }
 
 // ============================================================
@@ -1123,12 +1241,17 @@ function rollDrop() {
     }
   }
 
-  // Stage 5 rare boost
-  const rareBoost = currentStage.id === 5 ? 1.5 : 1;
+  // Boost rare materials in later stages
+  const stageId = currentStage.id;
+  const rareBoost = stageId >= 20 ? 2.5 : stageId >= 10 ? 1.8 : stageId >= 5 ? 1.3 : 1;
 
   for (const mat of MATERIALS) {
     let rate = mat.dropRate;
-    if (mat.id === 'star' || mat.id === 'ice') rate *= rareBoost;
+    if (mat.id === 'star' || mat.id === 'shell' || mat.id === 'aurora') rate *= rareBoost;
+    // Aurora only drops from stage 15+
+    if (mat.id === 'aurora' && stageId < 15) rate = 0;
+    // Shell only drops from stage 8+
+    if (mat.id === 'shell' && stageId < 8) rate = 0;
     cumulative += rate;
     if (rand < cumulative) return mat;
   }
@@ -1679,12 +1802,26 @@ function drawGame() {
 // 13. Album (Card Collection) Scene
 // ============================================================
 let albumFrom = 'title';
+let albumScrollY = 0;
+let albumScrollTarget = 0;
+let albumDragStartY = -1;
+let albumDragLastY = -1;
 
 function updateAlbum() {
+  // Smooth scroll
+  albumScrollY += (albumScrollTarget - albumScrollY) * 0.2;
+  const matRows = Math.ceil(MATERIALS.length / 2);
+  const contentH = 80 + matRows * 75 + 40 + RECIPES.length * 95 + 60;
+  const maxScroll = Math.max(0, contentH - 580);
+  albumScrollTarget = Math.max(0, Math.min(maxScroll, albumScrollTarget));
+  albumScrollY = Math.max(0, Math.min(maxScroll, albumScrollY));
+
   if (inputTapped) {
-    if (hitRect(inputX, inputY, 20, 630, 120, 45)) {
+    const dragDist = albumDragStartY >= 0 ? Math.abs(inputY - albumDragStartY) : 0;
+    if (dragDist < 10 && hitRect(inputX, inputY, 20, 640, 120, 45)) {
       sfxButton();
       scene = albumFrom;
+      albumScrollY = 0; albumScrollTarget = 0;
     }
   }
 }
@@ -1697,87 +1834,95 @@ function drawAlbum() {
   ctx.fillRect(0, 0, DESIGN_W, DESIGN_H);
 
   ctx.fillStyle = '#E65100';
-  ctx.font = 'bold 28px sans-serif';
+  ctx.font = 'bold 26px sans-serif';
   ctx.textAlign = 'center';
-  ctx.fillText('カード ずかん', DESIGN_W / 2, 45);
+  ctx.fillText('カード ずかん', DESIGN_W / 2, 40);
+
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(0, 55, DESIGN_W, 580);
+  ctx.clip();
+
+  const oY = -albumScrollY;
 
   // Materials section
   ctx.fillStyle = '#795548';
-  ctx.font = 'bold 18px sans-serif';
+  ctx.font = 'bold 16px sans-serif';
   ctx.textAlign = 'left';
-  ctx.fillText('そざいカード', 25, 85);
+  ctx.fillText('そざいカード', 25, 75 + oY);
 
   for (let i = 0; i < MATERIALS.length; i++) {
     const mat = MATERIALS[i];
     const mx = 20 + (i % 2) * 190;
-    const my = 100 + Math.floor(i / 2) * 80;
-    const count = saveData.materials[mat.id] || 0;
-
-    drawCard(mx, my, 70, 65, '', '', count > 0 ? '#4FC3F7' : '#B0BEC5', false, mat.id);
-
-    ctx.fillStyle = count > 0 ? '#333' : '#999';
-    ctx.font = '13px sans-serif';
-    ctx.textAlign = 'left';
-    ctx.fillText(mat.name, mx + 78, my + 28);
-    ctx.font = 'bold 16px sans-serif';
-    ctx.fillText(`× ${count}`, mx + 78, my + 50);
+    const my = 90 + Math.floor(i / 2) * 75 + oY;
+    if (my > -80 && my < 700) {
+      const count = saveData.materials[mat.id] || 0;
+      drawCard(mx, my, 65, 60, '', '', count > 0 ? '#4FC3F7' : '#B0BEC5', false, mat.id);
+      ctx.fillStyle = count > 0 ? '#333' : '#999';
+      ctx.font = '12px sans-serif';
+      ctx.textAlign = 'left';
+      ctx.fillText(mat.name, mx + 72, my + 25);
+      ctx.font = 'bold 15px sans-serif';
+      ctx.fillText(`x ${count}`, mx + 72, my + 45);
+    }
   }
 
-  // Completed cards section
+  const matRows = Math.ceil(MATERIALS.length / 2);
+  const compStartY = 90 + matRows * 75 + 20 + oY;
+
   ctx.fillStyle = '#795548';
-  ctx.font = 'bold 18px sans-serif';
+  ctx.font = 'bold 16px sans-serif';
   ctx.textAlign = 'left';
-  ctx.fillText('かんせいカード', 25, 285);
+  ctx.fillText('かんせいカード', 25, compStartY);
 
   for (let i = 0; i < RECIPES.length; i++) {
-    const recipe = RECIPES[RECIPES.length - 1 - i]; // Show low rarity first
-    const cy = 305 + i * 105;
-    const count = saveData.completedCards[recipe.id] || 0;
-    const owned = count > 0;
+    const recipe = RECIPES[RECIPES.length - 1 - i];
+    const cy = compStartY + 20 + i * 95;
+    if (cy > -100 && cy < 700) {
+      const count = saveData.completedCards[recipe.id] || 0;
+      const owned = count > 0;
 
-    // Card image
-    if (owned) {
-      drawCard(20, cy, 75, 90, '', recipe.name, recipe.color, true);
-      drawBear(20 + 37, cy + 32, 20, true);
-    } else {
-      drawCard(20, cy, 75, 90, '', '???', '#B0BEC5');
-      ctx.fillStyle = '#B0BEC5';
-      ctx.font = 'bold 28px sans-serif';
-      ctx.textAlign = 'center';
-      ctx.fillText('?', 20 + 37, cy + 40);
-    }
-
-    // Info
-    ctx.fillStyle = owned ? '#333' : '#999';
-    ctx.font = 'bold 14px sans-serif';
-    ctx.textAlign = 'left';
-    ctx.fillText(owned ? recipe.name : '???', 105, cy + 20);
-    ctx.fillStyle = recipe.color === '#E0E0E0' ? '#666' : recipe.color;
-    ctx.font = '13px sans-serif';
-    ctx.fillText(`${recipe.stars} ${recipe.label}`, 105, cy + 40);
-
-    if (owned) {
-      ctx.fillStyle = '#333';
-      ctx.fillText(`もってる: ${count}まい`, 105, cy + 58);
-    } else {
-      // Show remaining materials needed
-      ctx.fillStyle = '#999';
-      let needed = [];
-      for (const [matId, req] of Object.entries(recipe.recipe)) {
-        const have = saveData.materials[matId] || 0;
-        const mat = MATERIALS.find(m => m.id === matId);
-        if (have < req) {
-          needed.push(`${mat.name.slice(0,3)}あと${req - have}`);
-        }
+      if (owned) {
+        drawCard(20, cy, 70, 82, '', recipe.name, recipe.color, true);
+        drawBear(20 + 35, cy + 28, 18, true);
+      } else {
+        drawCard(20, cy, 70, 82, '', '???', '#B0BEC5');
+        ctx.fillStyle = '#B0BEC5';
+        ctx.font = 'bold 24px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('?', 55, cy + 38);
       }
-      if (needed.length > 0) {
-        ctx.font = '11px sans-serif';
-        ctx.fillText(needed.join(' '), 105, cy + 58);
+
+      ctx.fillStyle = owned ? '#333' : '#999';
+      ctx.font = 'bold 13px sans-serif';
+      ctx.textAlign = 'left';
+      ctx.fillText(owned ? recipe.name : '???', 100, cy + 18);
+      ctx.fillStyle = recipe.color === '#E0E0E0' ? '#666' : recipe.color;
+      ctx.font = '12px sans-serif';
+      ctx.fillText(`${recipe.stars} ${recipe.label}`, 100, cy + 36);
+
+      if (owned) {
+        ctx.fillStyle = '#333';
+        ctx.fillText(`もってる: ${count}まい`, 100, cy + 52);
+      } else {
+        ctx.fillStyle = '#999';
+        let needed = [];
+        for (const [matId, req] of Object.entries(recipe.recipe)) {
+          const have = saveData.materials[matId] || 0;
+          const mat = MATERIALS.find(m => m.id === matId);
+          if (have < req) needed.push(`${mat.name.slice(0,3)}あと${req - have}`);
+        }
+        if (needed.length > 0) {
+          ctx.font = '10px sans-serif';
+          ctx.fillText(needed.join(' '), 100, cy + 52);
+        }
       }
     }
   }
 
-  drawButton(20, 630, 120, 45, 'もどる', '#78909C', '#FFF', 18);
+  ctx.restore();
+
+  drawButton(20, 640, 120, 45, 'もどる', '#78909C', '#FFF', 18);
 }
 
 // ============================================================
