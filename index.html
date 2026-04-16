@@ -1867,10 +1867,26 @@ function getStageDrops(stageId) {
 }
 
 // 3-stage synthesis: 5/15=head, 10/15=body, 15/15=complete
+// Key items per card (created at 5/15 and 10/15 milestones)
+const KEY_ITEMS = {
+  koguma:      ['こぐまのマフラー', 'こぐまのぼうし'],
+  osanpo:      ['おさんぽバスケット', 'おさんぽちず'],
+  hoshizora:   ['ほしのペンダント', 'よぞらのマント'],
+  oyogu:       ['うみのゴーグル', 'しおかぜのうきわ'],
+  oyasumi:     ['ゆめのオルゴール', 'ねむりのティアラ'],
+  tanken:      ['ぼうけんのバッジ', 'たからばこのカギ'],
+  ousama:      ['おうのしるし', 'きんのメダリオン'],
+  mahoutsukai: ['まほうのけっしょう', 'ふしぎなグリモワール'],
+  ouji:        ['オーロラのブローチ', 'そらのかんむり'],
+  uchuu:       ['ぎんがのコンパス', 'うちゅうのパスポート'],
+  densetsu:    ['でんせつのかけら', 'きせきのしょうめい'],
+};
+
 function checkAutoSynth() {
   for (const recipe of RECIPES) {
     const owned = recipe.materials.filter(m => saveData.ownedMaterials[m.id]).length;
-    const currentLevel = saveData.completedCards[recipe.id] || 0; // 0,1,2,3
+    const currentLevel = saveData.completedCards[recipe.id] || 0;
+    const keys = KEY_ITEMS[recipe.id] || ['キーアイテム1', 'キーアイテム2'];
 
     if (owned >= 15 && currentLevel < 3) {
       synthCards = recipe.materials.slice(10, 15).map(m => m.id);
@@ -1880,13 +1896,15 @@ function checkAutoSynth() {
     } else if (owned >= 10 && currentLevel < 2) {
       synthCards = recipe.materials.slice(5, 10).map(m => m.id);
       saveData.completedCards[recipe.id] = 2;
+      saveData.ownedMaterials[recipe.id + '_key2'] = true;
       saveGame();
-      return { ...recipe, synthLevel: 2, synthLabel: 'ちからが あつまってきた！' };
+      return { ...recipe, synthLevel: 2, synthLabel: `「${keys[1]}」ができた！` };
     } else if (owned >= 5 && currentLevel < 1) {
       synthCards = recipe.materials.slice(0, 5).map(m => m.id);
       saveData.completedCards[recipe.id] = 1;
+      saveData.ownedMaterials[recipe.id + '_key1'] = true;
       saveGame();
-      return { ...recipe, synthLevel: 1, synthLabel: 'ひかりはじめた！' };
+      return { ...recipe, synthLevel: 1, synthLabel: `「${keys[0]}」ができた！` };
     }
   }
   return null;
