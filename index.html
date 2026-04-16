@@ -1561,35 +1561,22 @@ function generateQuiz() {
   selectedAnswer = -1;
 }
 
-function rollDrop() {
-  const rand = Math.random();
-  let cumulative = 0;
-
-  // First clear: prioritize unowned materials
-  const isFirstClear = !saveData.clearedStages.includes(currentStage.id);
-
-  if (isFirstClear) {
-    const unowned = MATERIALS.filter(m => saveData.materials[m.id] === 0);
-    if (unowned.length > 0) {
-      return unowned[Math.floor(Math.random() * unowned.length)];
-    }
+// Fixed drop table: each stage gives specific materials (no RNG)
+// Cycles through materials, rarer ones appear at higher stages
+function getStageDrops(stageId, dropCount) {
+  const drops = [];
+  // Available materials based on stage progression
+  const available = MATERIALS.filter(m => {
+    if (m.id === 'shell' && stageId < 20) return false;
+    if (m.id === 'aurora' && stageId < 40) return false;
+    return true;
+  });
+  for (let i = 0; i < dropCount; i++) {
+    // Rotate through available materials based on stage number
+    const idx = (stageId - 1 + i) % available.length;
+    drops.push(available[idx]);
   }
-
-  // Boost rare materials in later stages
-  const stageId = currentStage.id;
-  const rareBoost = stageId >= 20 ? 2.5 : stageId >= 10 ? 1.8 : stageId >= 5 ? 1.3 : 1;
-
-  for (const mat of MATERIALS) {
-    let rate = mat.dropRate;
-    if (mat.id === 'star' || mat.id === 'shell' || mat.id === 'aurora') rate *= rareBoost;
-    // Aurora only drops from stage 15+
-    if (mat.id === 'aurora' && stageId < 15) rate = 0;
-    // Shell only drops from stage 8+
-    if (mat.id === 'shell' && stageId < 8) rate = 0;
-    cumulative += rate;
-    if (rand < cumulative) return mat;
-  }
-  return MATERIALS[0];
+  return drops;
 }
 
 function checkAutoSynth() {
@@ -1766,12 +1753,9 @@ function updateGame() {
     bearRunX += 2.5;
     spawnSparkles(bearRunX, 200, 1);
     if (bearRunTimer > 80) {
-      // Drop cards
-      const dropCount = currentStage.drops;
-      droppedCards = [];
-      for (let i = 0; i < dropCount; i++) {
-        const mat = rollDrop();
-        droppedCards.push(mat);
+      // Drop cards (fixed per stage, no RNG)
+      droppedCards = getStageDrops(currentStage.id, currentStage.drops);
+      for (const mat of droppedCards) {
         saveData.materials[mat.id]++;
       }
       // Mark stage as cleared
