@@ -208,56 +208,31 @@ for (const [k, src] of Object.entries(CARD_IMAGES)) {
 // 5. Game Data
 // ============================================================
 
-// Each completed card has its own unique materials (not consumed on synthesis)
+// 11 cards × 15 materials each = 165 total. 1 material per stage → card N completes at stage N*15.
+function genMats(prefix, names) { return names.map(n => ({ id: prefix + '_' + n[0], name: n[1] })); }
 const RECIPES = [
-  { id: 'koguma', name: 'こぐまのシロ', rarity: 1, stars: '★', label: 'ふつう',
-    color: '#E0E0E0', materials: [
-      { id: 'koguma_foot', name: 'こぐまのあしあと' },
-      { id: 'koguma_fur', name: 'こぐまのふわけ' },
-      { id: 'koguma_ribbon', name: 'こぐまのリボン' },
-  ]},
-  { id: 'osanpo', name: 'おさんぽシロクマ', rarity: 2, stars: '★★', label: 'レア',
-    color: '#4FC3F7', materials: [
-      { id: 'osanpo_scarf', name: 'あかいマフラー' },
-      { id: 'osanpo_leaf', name: 'おさんぽのはっぱ' },
-      { id: 'osanpo_bell', name: 'おさんぽのすず' },
-  ]},
-  { id: 'hoshizora', name: 'ほしぞらシロクマ', rarity: 3, stars: '★★★', label: 'すごいレア',
-    color: '#FFD700', materials: [
-      { id: 'hoshi_dust', name: 'ほしのかけら' },
-      { id: 'hoshi_map', name: 'せいざのちず' },
-      { id: 'hoshi_tear', name: 'ほしのなみだ' },
-  ]},
-  { id: 'oyasumi', name: 'おやすみシロクマ', rarity: 4, stars: '★★★★', label: 'とてもレア',
-    color: '#5C6BC0', materials: [
-      { id: 'oyasu_pillow', name: 'ゆめのまくら' },
-      { id: 'oyasu_blanket', name: 'ふわふわブランケット' },
-      { id: 'oyasu_moon', name: 'おやすみのつき' },
-      { id: 'oyasu_lullaby', name: 'こもりうたのおと' },
-  ]},
-  { id: 'ousama', name: 'おうさまシロクマ', rarity: 5, stars: '★★★★★', label: 'ちょうレア',
-    color: '#FF6D00', materials: [
-      { id: 'king_crown', name: 'きんのおうかん' },
-      { id: 'king_cape', name: 'あかいマント' },
-      { id: 'king_scepter', name: 'おうのつえ' },
-      { id: 'king_throne', name: 'こおりのおうざ' },
-  ]},
-  { id: 'ouji', name: 'オーロラおうじ', rarity: 6, stars: '★★★★★★', label: 'ごくレア',
-    color: '#7C4DFF', materials: [
-      { id: 'ouji_light', name: 'オーロラのひかり' },
-      { id: 'ouji_crystal', name: 'にじのクリスタル' },
-      { id: 'ouji_wing', name: 'ひかりのはね' },
-      { id: 'ouji_tiara', name: 'ほしのティアラ' },
-      { id: 'ouji_gem', name: 'そらのほうせき' },
-  ]},
-  { id: 'densetsu', name: 'でんせつのシロクマ', rarity: 7, stars: '★★★★★★★', label: 'でんせつ',
-    color: '#E040FB', materials: [
-      { id: 'den_wing', name: 'でんせつのつばさ' },
-      { id: 'den_halo', name: 'にじのわ' },
-      { id: 'den_heart', name: 'えいえんのこころ' },
-      { id: 'den_star', name: 'きせきのほし' },
-      { id: 'den_crown', name: 'でんせつのおうかん' },
-  ]},
+  { id: 'koguma', name: 'こぐまのシロ', rarity: 1, stars: '★', label: 'ふつう', color: '#E0E0E0',
+    materials: genMats('k1', [['foot','こぐまのあしあと'],['fur','ふわふわのけ'],['ribbon','ちいさいリボン'],['nose','ピンクのはな'],['ear','まるいおみみ'],['paw','にくきゅう'],['tail','みじかいしっぽ'],['eye','くりくりおめめ'],['milk','ミルクびん'],['cookie','くまクッキー'],['scarf','あおいマフラー'],['hat','ニットぼうし'],['ball','けだま'],['bell','こりんのすず'],['heart','こぐまのハート']]) },
+  { id: 'osanpo', name: 'おさんぽシロクマ', rarity: 2, stars: '★★', label: 'レア', color: '#4FC3F7',
+    materials: genMats('k2', [['scarf','あかいマフラー'],['leaf','おちば'],['bell','おさんぽのすず'],['boot','ながぐつ'],['puddle','みずたまり'],['bird','ことりのはね'],['bench','きのベンチ'],['acorn','どんぐり'],['flower','たんぽぽ'],['snail','かたつむり'],['cloud','わたぐも'],['rainbow','にじのかけら'],['bridge','こばし'],['stone','まるいし'],['basket','おべんとう']]) },
+  { id: 'hoshizora', name: 'ほしぞらシロクマ', rarity: 3, stars: '★★★', label: 'すごいレア', color: '#FFD700',
+    materials: genMats('k3', [['dust','ほしのかけら'],['map','せいざのちず'],['tear','ほしのなみだ'],['scope','ぼうえんきょう'],['wish','ねがいぼし'],['comet','ほうきぼし'],['milky','あまのがわ'],['north','きたぼし'],['moon','みかづき'],['meteor','ながれぼし'],['glow','ほしのひかり'],['dust2','きらきらのこな'],['night','よぞらのかけら'],['planet','ちいさなわくせい'],['twinkle','またたき']]) },
+  { id: 'oyogu', name: 'およぎシロクマ', rarity: 3, stars: '★★★', label: 'すごいレア', color: '#26C6DA',
+    materials: genMats('k4', [['wave','なみのしずく'],['shell','うみのかいがら'],['pearl','しんじゅ'],['fish','おさかな'],['coral','さんご'],['star','ひとで'],['bubble','あわ'],['kelp','わかめ'],['anchor','いかり'],['boat','ちいさいふね'],['sand','すなつぶ'],['crab','ちびがに'],['drift','りゅうぼく'],['tide','しおかぜ'],['sunset','ゆうやけ']]) },
+  { id: 'oyasumi', name: 'おやすみシロクマ', rarity: 4, stars: '★★★★', label: 'とてもレア', color: '#5C6BC0',
+    materials: genMats('k5', [['pillow','ゆめのまくら'],['blanket','ふわブランケット'],['moon','おやすみのつき'],['lullaby','こもりうた'],['sheep','ひつじさん'],['lamp','よるのランプ'],['pajama','パジャマ'],['teddy','テディベア'],['dream','ゆめのかけら'],['cloud','もくもくくも'],['star','ねがいぼし'],['milk','ホットミルク'],['book','おやすみえほん'],['curtain','ほしのカーテン'],['yawn','おおあくび']]) },
+  { id: 'tanken', name: 'たんけんシロクマ', rarity: 4, stars: '★★★★', label: 'とてもレア', color: '#8D6E63',
+    materials: genMats('k6', [['map','たからのちず'],['compass','コンパス'],['torch','たいまつ'],['key','ふしぎなカギ'],['rope','ロープ'],['gem','どうくつのほうせき'],['fossil','かせき'],['crystal','すいしょう'],['flag','ぼうけんのはた'],['pick','つるはし'],['lantern','ランタン'],['diary','たんけんにっき'],['boot','やまのくつ'],['badge','たんけんバッジ'],['treasure','おたから']]) },
+  { id: 'ousama', name: 'おうさまシロクマ', rarity: 5, stars: '★★★★★', label: 'ちょうレア', color: '#FF6D00',
+    materials: genMats('k7', [['crown','きんのおうかん'],['cape','あかいマント'],['scepter','おうのつえ'],['throne','こおりのおうざ'],['ring','おうのゆびわ'],['seal','おうのいん'],['banner','おうのはた'],['gem','ルビー'],['shield','きんのたて'],['sword','ぎんのけん'],['goblet','きんのさかずき'],['robe','おうのころも'],['orb','おうのたま'],['medal','くんしょう'],['law','おうのおふれ']]) },
+  { id: 'mahoutsukai', name: 'まほうつかいシロクマ', rarity: 5, stars: '★★★★★', label: 'ちょうレア', color: '#AB47BC',
+    materials: genMats('k8', [['hat','まほうのぼうし'],['wand','ほしのステッキ'],['book','まほうのほん'],['potion','ひかるポーション'],['robe','まほうのローブ'],['crystal','まほうのすいしょう'],['cat','くろねこ'],['broom','まほうのほうき'],['cauldron','おおがま'],['scroll','まきもの'],['ring','まほうのゆびわ'],['herb','ふしぎなくさ'],['flame','あおいほのお'],['mirror','まほうのかがみ'],['feather','ふくろうのはね']]) },
+  { id: 'ouji', name: 'オーロラおうじ', rarity: 6, stars: '★★★★★★', label: 'ごくレア', color: '#7C4DFF',
+    materials: genMats('k9', [['light','オーロラのひかり'],['crystal','にじのクリスタル'],['wing','ひかりのはね'],['tiara','ほしのティアラ'],['gem','そらのほうせき'],['prism','プリズム'],['silk','ひかりのきぬ'],['harp','てんくうのハープ'],['dew','あさつゆ'],['veil','オーロラのヴェール'],['ring','そらのゆびわ'],['staff','ひかりのつえ'],['flower','てんくうのはな'],['tear','そらのなみだ'],['blessing','てんのめぐみ']]) },
+  { id: 'uchuu', name: 'うちゅうシロクマ', rarity: 6, stars: '★★★★★★', label: 'ごくレア', color: '#1A237E',
+    materials: genMats('k10', [['helmet','うちゅうヘルメット'],['rocket','ミニロケット'],['planet','ちいさなわくせい'],['comet','すいせいのかけら'],['nebula','せいうんのひかり'],['suit','うちゅうふく'],['flag','うちゅうのはた'],['ring','どせいのわ'],['moon','うちゅうのつき'],['star','ちょうしんせい'],['dust','うちゅうのちり'],['gem','いんせき'],['signal','うちゅうでんぱ'],['map','ほしのちず'],['oxygen','さんそボンベ']]) },
+  { id: 'densetsu', name: 'でんせつのシロクマ', rarity: 7, stars: '★★★★★★★', label: 'でんせつ', color: '#E040FB',
+    materials: genMats('k11', [['wing','でんせつのつばさ'],['halo','にじのわ'],['heart','えいえんのこころ'],['star','きせきのほし'],['crown','でんせつのおうかん'],['eye','せんりがん'],['aura','しんぴのオーラ'],['gem','げんそうのほうせき'],['key','じくうのカギ'],['scroll','いにしえのまきもの'],['flame','えいえんのほのお'],['shield','しんわのたて'],['orb','うんめいのたま'],['tear','りゅうのなみだ'],['soul','でんせつのたましい']]) },
 ];
 
 // Build flat material list from recipes
@@ -1880,10 +1855,11 @@ function generateQuiz() {
   selectedAnswer = -1;
 }
 
-// Fixed drop: each stage gives 1 specific material (deterministic, no RNG)
+// 1 material per stage, sequential: S1→mat[0], S2→mat[1], ... S165→mat[164]
 function getStageDrops(stageId) {
-  const idx = (stageId - 1) % MATERIALS.length;
-  return [MATERIALS[idx]];
+  const idx = stageId - 1;
+  if (idx >= 0 && idx < MATERIALS.length) return [MATERIALS[idx]];
+  return [];
 }
 
 function checkAutoSynth() {
