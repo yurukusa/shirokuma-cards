@@ -236,19 +236,18 @@ const RECIPES = [
     color: '#E0E0E0', recipe: { footprint: 2, fur: 1 } },
 ];
 
-// 60 Stages - difficulty curve with 6 zones
+// 100 Stages - rockets stay modest, difficulty comes from question types
 const STAGES = [];
-for (let i = 1; i <= 60; i++) {
+for (let i = 1; i <= 100; i++) {
   let level, drops;
-  if (i <= 5) { level = 1; drops = 1; }
-  else if (i <= 10) { level = 1; drops = 2; }
-  else if (i <= 15) { level = 2; drops = 2; }
-  else if (i <= 20) { level = 2; drops = 3; }
-  else if (i <= 30) { level = 3; drops = 3; }
-  else if (i <= 40) { level = 3; drops = 3; }
-  else if (i <= 50) { level = 3; drops = 4; }
+  if (i <= 10) { level = 1; drops = 1; }
+  else if (i <= 20) { level = 2; drops = 2; }
+  else if (i <= 40) { level = 3; drops = 2; }
+  else if (i <= 60) { level = 3; drops = 3; }
+  else if (i <= 80) { level = 3; drops = 3; }
   else { level = 3; drops = 4; }
-  const rockets = 3 + Math.floor(i * 0.4);
+  // Rockets grow slowly: 3-8 max
+  const rockets = Math.min(8, 3 + Math.floor(i / 15));
   const iceHP = rockets * 10;
   STAGES.push({ id: i, iceHP, rockets, level, drops });
 }
@@ -1245,14 +1244,17 @@ function generateQuiz() {
   const level = currentStage.level;
   const stageId = currentStage.id;
 
-  // Available question types based on mode and stage
+  // Available question types - unlock progressively
   const types = [];
-  if (mode !== 'letters') types.push('math');
-  if (mode !== 'numbers') types.push('picture');
-  // Direction questions from stage 5+
-  if (stageId >= 5) types.push('direction');
-  // Subtraction from stage 15+
-  if (stageId >= 15 && mode !== 'letters') types.push('subtract');
+  if (mode !== 'letters') types.push('math');        // S1+
+  if (mode !== 'numbers') types.push('picture');     // S1+
+  if (stageId >= 5) types.push('direction');          // S5+
+  if (stageId >= 10) types.push('counting');          // S10+: count objects
+  if (stageId >= 15 && mode !== 'letters') types.push('subtract'); // S15+
+  if (stageId >= 20) types.push('color');             // S20+: identify colors
+  if (stageId >= 30) types.push('shape');             // S30+: identify shapes
+  if (stageId >= 40 && mode !== 'numbers') types.push('katakana'); // S40+: katakana match
+  if (stageId >= 50) types.push('sequence');          // S50+: number sequence
 
   const type = types[Math.floor(Math.random() * types.length)];
 
@@ -1323,6 +1325,99 @@ function generateQuiz() {
         questionLabel: 'どっちの ほうこう？', choices,
         correctIndex: choices.indexOf(correct.arrow), disabledChoices: [] };
     }
+
+  } else if (type === 'counting') {
+    // Count objects
+    if (stageId >= 40 && Math.random() < 0.5) {
+      // Advanced: two types of objects, ask about one
+      const targetCount = 1 + Math.floor(Math.random() * 5);
+      const otherCount = 1 + Math.floor(Math.random() * 4);
+      const choices = [targetCount];
+      while (choices.length < 3) {
+        const off = (Math.random() < 0.5 ? 1 : -1) * (1 + Math.floor(Math.random() * 2));
+        const w = targetCount + off;
+        if (w > 0 && w <= 10 && !choices.includes(w)) choices.push(w);
+      }
+      shuffleArray(choices);
+      quizData = { type: 'counting_mixed', targetCount, otherCount,
+        question: 'あかは いくつ？',
+        choices: choices.map(String), correctIndex: choices.indexOf(targetCount), disabledChoices: [] };
+    } else {
+      // Simple: count same objects
+      const count = 1 + Math.floor(Math.random() * (stageId >= 40 ? 9 : stageId >= 20 ? 7 : 5));
+      const choices = [count];
+      while (choices.length < 3) {
+        const off = (Math.random() < 0.5 ? 1 : -1) * (1 + Math.floor(Math.random() * 2));
+        const w = count + off;
+        if (w > 0 && w <= 10 && !choices.includes(w)) choices.push(w);
+      }
+      shuffleArray(choices);
+      quizData = { type: 'counting', count, question: 'いくつ あるかな？',
+        choices: choices.map(String), correctIndex: choices.indexOf(count), disabledChoices: [] };
+    }
+
+  } else if (type === 'color') {
+    // Identify color
+    const colors = [
+      { name: 'あか', hex: '#EF5350' }, { name: 'あお', hex: '#42A5F5' },
+      { name: 'きいろ', hex: '#FFEE58' }, { name: 'みどり', hex: '#66BB6A' },
+      { name: 'オレンジ', hex: '#FFA726' }, { name: 'むらさき', hex: '#AB47BC' },
+      { name: 'ピンク', hex: '#EC407A' },
+    ];
+    const correct = colors[Math.floor(Math.random() * colors.length)];
+    const wrongs = colors.filter(c => c.name !== correct.name);
+    shuffleArray(wrongs);
+    const choices = shuffleArray([correct.name, wrongs[0].name, wrongs[1].name]);
+    quizData = { type: 'color', colorHex: correct.hex, question: 'なにいろ？',
+      choices, correctIndex: choices.indexOf(correct.name), disabledChoices: [] };
+
+  } else if (type === 'shape') {
+    // Identify shape
+    const shapes = [
+      { name: 'まる', draw: 'circle' }, { name: 'さんかく', draw: 'triangle' },
+      { name: 'しかく', draw: 'square' }, { name: 'ほし', draw: 'star_shape' },
+      { name: 'ハート', draw: 'heart_shape' },
+    ];
+    const correct = shapes[Math.floor(Math.random() * shapes.length)];
+    const wrongs = shapes.filter(s => s.name !== correct.name);
+    shuffleArray(wrongs);
+    const choices = shuffleArray([correct.name, wrongs[0].name, wrongs[1].name]);
+    quizData = { type: 'shape', shapeDraw: correct.draw, question: 'このかたちは？',
+      choices, correctIndex: choices.indexOf(correct.name), disabledChoices: [] };
+
+  } else if (type === 'katakana') {
+    // Show hiragana, choose matching katakana
+    const pairs = [
+      { h: 'あ', k: 'ア' }, { h: 'い', k: 'イ' }, { h: 'う', k: 'ウ' }, { h: 'え', k: 'エ' }, { h: 'お', k: 'オ' },
+      { h: 'か', k: 'カ' }, { h: 'き', k: 'キ' }, { h: 'く', k: 'ク' }, { h: 'け', k: 'ケ' }, { h: 'こ', k: 'コ' },
+      { h: 'さ', k: 'サ' }, { h: 'し', k: 'シ' }, { h: 'す', k: 'ス' }, { h: 'せ', k: 'セ' }, { h: 'そ', k: 'ソ' },
+      { h: 'た', k: 'タ' }, { h: 'ち', k: 'チ' }, { h: 'つ', k: 'ツ' }, { h: 'て', k: 'テ' }, { h: 'と', k: 'ト' },
+      { h: 'な', k: 'ナ' }, { h: 'に', k: 'ニ' }, { h: 'ぬ', k: 'ヌ' }, { h: 'ね', k: 'ネ' }, { h: 'の', k: 'ノ' },
+    ];
+    const correct = pairs[Math.floor(Math.random() * pairs.length)];
+    const wrongs = pairs.filter(p => p.k !== correct.k);
+    shuffleArray(wrongs);
+    const choices = shuffleArray([correct.k, wrongs[0].k, wrongs[1].k]);
+    quizData = { type: 'direction', question: correct.h,
+      questionLabel: 'おなじ もじの カタカナは？', choices,
+      correctIndex: choices.indexOf(correct.k), disabledChoices: [] };
+
+  } else if (type === 'sequence') {
+    // Number sequence: _, 2, 3 or 3, _, 5
+    const start = 1 + Math.floor(Math.random() * (stageId >= 70 ? 15 : 8));
+    const pos = Math.floor(Math.random() * 3); // which position is blank
+    const nums = [start, start + 1, start + 2];
+    const answer = nums[pos];
+    const display = nums.map((n, i) => i === pos ? '?' : String(n)).join(', ');
+    const choices = [answer];
+    while (choices.length < 3) {
+      const off = (Math.random() < 0.5 ? 1 : -1) * (1 + Math.floor(Math.random() * 2));
+      const w = answer + off;
+      if (w > 0 && !choices.includes(w)) choices.push(w);
+    }
+    shuffleArray(choices);
+    quizData = { type: 'math', question: display, choices: choices.map(String),
+      correctIndex: choices.indexOf(answer), disabledChoices: [] };
 
   } else {
     // Picture-name quiz
@@ -1627,6 +1722,10 @@ function drawGame() {
     { bg1: '#E8F5E9', bg2: '#C8E6C9', text: '#2E7D32' }, // 31-40 forest
     { bg1: '#FCE4EC', bg2: '#F8BBD0', text: '#C2185B' }, // 41-50 cherry
     { bg1: '#ECEFF1', bg2: '#CFD8DC', text: '#37474F' }, // 51-60 twilight
+    { bg1: '#FFFDE7', bg2: '#FFF9C4', text: '#F57F17' }, // 61-70 gold
+    { bg1: '#E0F7FA', bg2: '#B2EBF2', text: '#00838F' }, // 71-80 ocean
+    { bg1: '#FBE9E7', bg2: '#FFCCBC', text: '#BF360C' }, // 81-90 volcano
+    { bg1: '#F3E5F5', bg2: '#CE93D8', text: '#4A148C' }, // 91-100 cosmic
   ];
   const z = zones[Math.min(zone, zones.length - 1)];
   grad.addColorStop(0, z.bg1); grad.addColorStop(1, z.bg2);
@@ -1705,7 +1804,6 @@ function drawGame() {
         ctx.textAlign = 'center';
         ctx.fillText(quizData.question, DESIGN_W / 2, 370);
       } else if (quizData.type === 'direction') {
-        // Direction quiz: show arrow or text
         ctx.fillStyle = '#333';
         ctx.font = 'bold 50px sans-serif';
         ctx.textAlign = 'center';
@@ -1713,6 +1811,43 @@ function drawGame() {
         ctx.fillStyle = '#666';
         ctx.font = 'bold 18px sans-serif';
         ctx.fillText(quizData.questionLabel, DESIGN_W / 2, 400);
+      } else if (quizData.type === 'counting' || quizData.type === 'counting_mixed') {
+        const isMixed = quizData.type === 'counting_mixed';
+        const totalRed = isMixed ? quizData.targetCount : quizData.count;
+        const totalBlue = isMixed ? quizData.otherCount : 0;
+        const total = totalRed + totalBlue;
+        // Shuffle positions
+        const items = [];
+        for (let ci = 0; ci < totalRed; ci++) items.push('#EF5350');
+        for (let ci = 0; ci < totalBlue; ci++) items.push('#42A5F5');
+        shuffleArray(items);
+        const cols = Math.min(5, total);
+        const rows = Math.ceil(total / cols);
+        for (let ci = 0; ci < total; ci++) {
+          const col = ci % cols, row = Math.floor(ci / cols);
+          const ox = DESIGN_W/2 - (cols-1)*18 + col*36;
+          const oy = 345 - (rows-1)*14 + row*28;
+          ctx.fillStyle = items[ci];
+          ctx.beginPath(); ctx.arc(ox, oy, 10, 0, Math.PI*2); ctx.fill();
+        }
+        ctx.fillStyle = '#666'; ctx.font = 'bold 18px sans-serif';
+        ctx.textAlign = 'center'; ctx.fillText(quizData.question, DESIGN_W/2, 400);
+      } else if (quizData.type === 'color') {
+        // Draw a big colored circle
+        ctx.fillStyle = quizData.colorHex;
+        ctx.beginPath(); ctx.arc(DESIGN_W/2, 350, 30, 0, Math.PI*2); ctx.fill();
+        ctx.fillStyle = '#666'; ctx.font = 'bold 18px sans-serif';
+        ctx.textAlign = 'center'; ctx.fillText(quizData.question, DESIGN_W/2, 400);
+      } else if (quizData.type === 'shape') {
+        ctx.fillStyle = '#4FC3F7'; ctx.strokeStyle = '#1565C0'; ctx.lineWidth = 2;
+        const cx = DESIGN_W/2, cy = 350, r = 25;
+        if (quizData.shapeDraw === 'circle') { ctx.beginPath(); ctx.arc(cx,cy,r,0,Math.PI*2); ctx.fill(); ctx.stroke(); }
+        else if (quizData.shapeDraw === 'triangle') { ctx.beginPath(); ctx.moveTo(cx,cy-r); ctx.lineTo(cx-r,cy+r); ctx.lineTo(cx+r,cy+r); ctx.closePath(); ctx.fill(); ctx.stroke(); }
+        else if (quizData.shapeDraw === 'square') { ctx.fillRect(cx-r,cy-r,r*2,r*2); ctx.strokeRect(cx-r,cy-r,r*2,r*2); }
+        else if (quizData.shapeDraw === 'star_shape') { ctx.beginPath(); for(let j=0;j<10;j++){const a=(j*36-90)*Math.PI/180;const sr=j%2===0?r:r*0.4;if(j===0)ctx.moveTo(cx+Math.cos(a)*sr,cy+Math.sin(a)*sr);else ctx.lineTo(cx+Math.cos(a)*sr,cy+Math.sin(a)*sr);}ctx.closePath(); ctx.fill(); ctx.stroke(); }
+        else if (quizData.shapeDraw === 'heart_shape') { ctx.beginPath(); ctx.moveTo(cx,cy+r*0.7); ctx.bezierCurveTo(cx-r*1.5,cy-r*0.3,cx-r*0.5,cy-r*1.2,cx,cy-r*0.5); ctx.bezierCurveTo(cx+r*0.5,cy-r*1.2,cx+r*1.5,cy-r*0.3,cx,cy+r*0.7); ctx.fill(); ctx.stroke(); }
+        ctx.fillStyle = '#666'; ctx.font = 'bold 18px sans-serif';
+        ctx.textAlign = 'center'; ctx.fillText(quizData.question, DESIGN_W/2, 400);
       } else {
         // Picture-name quiz: show picture, choose name
         ctx.fillStyle = 'rgba(255,255,255,0.85)';
