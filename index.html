@@ -1256,15 +1256,20 @@ function generateQuiz() {
   if (stageId >= 25) types.push('compare');            // S25+: big/small, long/short, more/less
   if (stageId >= 40 && mode !== 'numbers') types.push('katakana'); // S40+: katakana match
   if (stageId >= 50) types.push('sequence');          // S50+: number sequence
+  if (stageId >= 100) types.push('multiply');         // S100+: simple multiplication
+  if (stageId >= 100) types.push('divide');           // S100+: simple division
+  if (stageId >= 100) types.push('kanji');            // S100+: basic kanji
 
   const type = types[Math.floor(Math.random() * types.length)];
 
   if (type === 'math') {
+    // 30% chance of easy review problem at higher stages
+    const effectiveStage = (stageId > 10 && Math.random() < 0.3) ? 1 + Math.floor(Math.random() * 10) : stageId;
     let maxA, maxB, maxAnswer;
-    if (stageId <= 5) { maxA = 3; maxB = 3; maxAnswer = 5; }
-    else if (stageId <= 10) { maxA = 5; maxB = 5; maxAnswer = 8; }
-    else if (stageId <= 20) { maxA = 7; maxB = 7; maxAnswer = 10; }
-    else if (stageId <= 25) { maxA = 9; maxB = 5; maxAnswer = 14; }
+    if (effectiveStage <= 5) { maxA = 3; maxB = 3; maxAnswer = 5; }
+    else if (effectiveStage <= 10) { maxA = 5; maxB = 5; maxAnswer = 8; }
+    else if (effectiveStage <= 20) { maxA = 7; maxB = 7; maxAnswer = 10; }
+    else if (effectiveStage <= 25) { maxA = 9; maxB = 5; maxAnswer = 14; }
     else { maxA = 10; maxB = 9; maxAnswer = 19; }
 
     let a, b;
@@ -1285,21 +1290,26 @@ function generateQuiz() {
       correctIndex: choices.indexOf(answer), disabledChoices: [] };
 
   } else if (type === 'subtract') {
-    let maxA;
-    if (stageId <= 20) maxA = 10;
-    else if (stageId <= 25) maxA = 14;
-    else maxA = 18;
-    const a = 3 + Math.floor(Math.random() * (maxA - 2));
-    const b = 1 + Math.floor(Math.random() * (a - 1));
+    // 30% chance of easy review
+    const effSt = (stageId > 25 && Math.random() < 0.3) ? 15 + Math.floor(Math.random() * 10) : stageId;
+    let minA, maxA, maxB;
+    if (effSt <= 20) { minA = 3; maxA = 7; maxB = 3; }       // 3-1 ~ 7-3 (easy single digit)
+    else if (effSt <= 30) { minA = 4; maxA = 9; maxB = 5; }   // 4-1 ~ 9-5
+    else if (effSt <= 40) { minA = 5; maxA = 10; maxB = 7; }  // 5-2 ~ 10-7
+    else if (effSt <= 60) { minA = 10; maxA = 15; maxB = 9; } // 10-3 ~ 15-9 (2digit - 1digit)
+    else if (effSt <= 80) { minA = 11; maxA = 18; maxB = 9; } // 11-4 ~ 18-9
+    else { minA = 12; maxA = 19; maxB = 9; }                    // 12-5 ~ 19-9
+    const a = minA + Math.floor(Math.random() * (maxA - minA + 1));
+    const b = 1 + Math.floor(Math.random() * Math.min(maxB, a - 1));
     const answer = a - b;
     const choices = [answer];
     while (choices.length < 3) {
       const off = (Math.random() < 0.5 ? 1 : -1) * (1 + Math.floor(Math.random() * 3));
       const wrong = answer + off;
-      if (wrong >= 0 && !choices.includes(wrong)) choices.push(wrong);
+      if (wrong >= 0 && wrong <= 20 && !choices.includes(wrong)) choices.push(wrong);
     }
     shuffleArray(choices);
-    quizData = { type: 'math', question: `${a} - ${b} = ?`, choices: choices.map(String),
+    quizData = { type: 'math', question: `${a} − ${b} = ?`, choices: choices.map(String),
       correctIndex: choices.indexOf(answer), disabledChoices: [] };
 
   } else if (type === 'direction') {
@@ -1456,6 +1466,80 @@ function generateQuiz() {
     shuffleArray(choices);
     quizData = { type: 'math', question: display, choices: choices.map(String),
       correctIndex: choices.indexOf(answer), disabledChoices: [] };
+
+  } else if (type === 'multiply') {
+    // Simple multiplication (times tables 1-5, gradually expanding)
+    const maxTable = stageId >= 120 ? 9 : stageId >= 110 ? 7 : 5;
+    const a = 2 + Math.floor(Math.random() * (maxTable - 1));
+    const b = 1 + Math.floor(Math.random() * 5);
+    const answer = a * b;
+    // Tutorial hint for first encounters
+    const hint = stageId <= 105 ? `（${a} を ${b} かい たすと...）` : '';
+    const choices = [answer];
+    while (choices.length < 3) {
+      const off = (Math.random() < 0.5 ? 1 : -1) * (a + Math.floor(Math.random() * a));
+      const wrong = answer + off;
+      if (wrong > 0 && wrong <= 50 && !choices.includes(wrong)) choices.push(wrong);
+    }
+    shuffleArray(choices);
+    quizData = { type: 'math', question: `${a} × ${b} = ?${hint ? '\n' + hint : ''}`,
+      choices: choices.map(String), correctIndex: choices.indexOf(answer), disabledChoices: [] };
+
+  } else if (type === 'divide') {
+    // Simple division (result is always whole number)
+    const b = 2 + Math.floor(Math.random() * (stageId >= 120 ? 7 : 4));
+    const answer = 1 + Math.floor(Math.random() * 5);
+    const a = b * answer;
+    const hint = stageId <= 105 ? `（${a}こ を ${b}にん で わけると...）` : '';
+    const choices = [answer];
+    while (choices.length < 3) {
+      const off = (Math.random() < 0.5 ? 1 : -1) * (1 + Math.floor(Math.random() * 3));
+      const wrong = answer + off;
+      if (wrong > 0 && wrong <= 20 && !choices.includes(wrong)) choices.push(wrong);
+    }
+    shuffleArray(choices);
+    quizData = { type: 'math', question: `${a} ÷ ${b} = ?${hint ? '\n' + hint : ''}`,
+      choices: choices.map(String), correctIndex: choices.indexOf(answer), disabledChoices: [] };
+
+  } else if (type === 'kanji') {
+    // Small 1 basic kanji - show kanji, choose reading
+    const kanjiList = [
+      { kanji: '一', reading: 'いち', wrongs: ['に', 'さん'] },
+      { kanji: '二', reading: 'に', wrongs: ['いち', 'さん'] },
+      { kanji: '三', reading: 'さん', wrongs: ['に', 'し'] },
+      { kanji: '四', reading: 'し', wrongs: ['さん', 'ご'] },
+      { kanji: '五', reading: 'ご', wrongs: ['し', 'ろく'] },
+      { kanji: '六', reading: 'ろく', wrongs: ['ご', 'なな'] },
+      { kanji: '七', reading: 'なな', wrongs: ['ろく', 'はち'] },
+      { kanji: '八', reading: 'はち', wrongs: ['なな', 'きゅう'] },
+      { kanji: '九', reading: 'きゅう', wrongs: ['はち', 'じゅう'] },
+      { kanji: '十', reading: 'じゅう', wrongs: ['きゅう', 'いち'] },
+      { kanji: '日', reading: 'ひ', wrongs: ['つき', 'ほし'] },
+      { kanji: '月', reading: 'つき', wrongs: ['ひ', 'ほし'] },
+      { kanji: '火', reading: 'ひ', wrongs: ['みず', 'き'] },
+      { kanji: '水', reading: 'みず', wrongs: ['ひ', 'つち'] },
+      { kanji: '木', reading: 'き', wrongs: ['はな', 'くさ'] },
+      { kanji: '金', reading: 'かね', wrongs: ['つち', 'みず'] },
+      { kanji: '土', reading: 'つち', wrongs: ['かね', 'みず'] },
+      { kanji: '山', reading: 'やま', wrongs: ['かわ', 'うみ'] },
+      { kanji: '川', reading: 'かわ', wrongs: ['やま', 'うみ'] },
+      { kanji: '花', reading: 'はな', wrongs: ['き', 'くさ'] },
+      { kanji: '犬', reading: 'いぬ', wrongs: ['ねこ', 'とり'] },
+      { kanji: '大', reading: 'おおきい', wrongs: ['ちいさい', 'ながい'] },
+      { kanji: '小', reading: 'ちいさい', wrongs: ['おおきい', 'みじかい'] },
+      { kanji: '上', reading: 'うえ', wrongs: ['した', 'なか'] },
+      { kanji: '下', reading: 'した', wrongs: ['うえ', 'そと'] },
+      { kanji: '左', reading: 'ひだり', wrongs: ['みぎ', 'うえ'] },
+      { kanji: '右', reading: 'みぎ', wrongs: ['ひだり', 'した'] },
+      { kanji: '目', reading: 'め', wrongs: ['みみ', 'くち'] },
+      { kanji: '耳', reading: 'みみ', wrongs: ['め', 'て'] },
+      { kanji: '口', reading: 'くち', wrongs: ['め', 'みみ'] },
+    ];
+    const item = kanjiList[Math.floor(Math.random() * kanjiList.length)];
+    const choices = shuffleArray([item.reading, ...item.wrongs]);
+    quizData = { type: 'direction', question: item.kanji,
+      questionLabel: 'この かんじの よみかたは？', choices,
+      correctIndex: choices.indexOf(item.reading), disabledChoices: [] };
 
   } else {
     // Picture-name quiz
@@ -1837,10 +1921,16 @@ function drawGame() {
       ctx.fill();
 
       if (quizData.type === 'math') {
+        ctx.textAlign = 'center';
+        const lines = quizData.question.split('\n');
         ctx.fillStyle = '#333';
         ctx.font = 'bold 36px sans-serif';
-        ctx.textAlign = 'center';
-        ctx.fillText(quizData.question, DESIGN_W / 2, 370);
+        ctx.fillText(lines[0], DESIGN_W / 2, lines.length > 1 ? 355 : 370);
+        if (lines.length > 1) {
+          ctx.fillStyle = '#999';
+          ctx.font = '14px sans-serif';
+          ctx.fillText(lines[1], DESIGN_W / 2, 395);
+        }
       } else if (quizData.type === 'direction') {
         ctx.fillStyle = '#333';
         ctx.font = 'bold 50px sans-serif';
