@@ -1010,12 +1010,15 @@ let quizAttempt = 0;
 let quizResultTimer = 0;
 let selectedAnswer = -1;
 let rocketAnim = null;
+let rocketQueue = []; // bonus rockets in flight
+let isBonus = false; // true during bonus rapid-fire phase
 let rescueTimer = 0;
 let droppedCards = [];
 let cardGetTimer = 0;
-let synthCards = [];
+let synthCards = []; // material cards consumed in synthesis (for animation)
 let synthTimer = 0;
 let synthResult = null;
+let synthPhase = 0; // 0=show materials, 1=merge, 2=reveal card
 let bearRunX = 0;
 let bearRunTimer = 0;
 
@@ -1030,6 +1033,8 @@ function startStage(stage) {
   droppedCards = [];
   synthCards = [];
   synthResult = null;
+  rocketQueue = [];
+  isBonus = false;
   particles.length = 0;
   generateQuiz();
   scene = 'game';
@@ -1141,8 +1146,10 @@ function checkAutoSynth() {
       }
     }
     if (canMake) {
-      // Consume materials
+      // Build list of consumed materials for animation
+      synthCards = [];
       for (const [matId, count] of Object.entries(recipe.recipe)) {
+        for (let n = 0; n < count; n++) synthCards.push(matId);
         saveData.materials[matId] -= count;
       }
       saveData.completedCards[recipe.id] = (saveData.completedCards[recipe.id] || 0) + 1;
@@ -1212,53 +1219,81 @@ function updateGame() {
       }
     }
   } else if (gamePhase === 'rocketReady') {
-    // Tap anywhere to fire remaining rockets (bonus)
+    // Bonus: tap anywhere to fire all remaining rockets rapidly
     if (inputTapped && rocketCount > 0) {
+      isBonus = true;
+      // Launch all remaining rockets with staggered timing
+      while (rocketCount > 0) {
+        rocketCount--;
+        const spread = (Math.random() - 0.5) * 60;
+        rocketQueue.push({
+          x: DESIGN_W / 2 + spread, y: 580,
+          targetY: 150 + Math.random() * 20,
+          progress: -rocketQueue.length * 0.08, // stagger start
+        });
+      }
       sfxLaunch();
-      rocketCount--;
-      rocketAnim = { x: DESIGN_W / 2, y: 580, targetY: 160, progress: 0 };
       gamePhase = 'rocketFire';
     } else if (rocketCount <= 0) {
-      // No bonus rockets, go to next quiz
       generateQuiz();
       gamePhase = 'quiz';
     }
   } else if (gamePhase === 'rocketFire') {
+    // Update single rocket (from quiz answer)
     if (rocketAnim) {
       rocketAnim.progress += 0.04;
       rocketAnim.y = 580 + (rocketAnim.targetY - 580) * Math.min(1, rocketAnim.progress);
-
-      // Fire trail particles
       if (sceneTimer % 2 === 0) {
         addParticle(rocketAnim.x + (Math.random()-0.5)*6, rocketAnim.y + 15,
           'shard', `hsl(${30+Math.random()*30}, 100%, ${50+Math.random()*30}%)`,
           (Math.random()-0.5)*2, 2 + Math.random()*2, 20);
       }
-
       if (rocketAnim.progress >= 1) {
-        // Hit!
         sfxHit();
         triggerShake(4, 10);
         const damage = iceMaxHP / currentStage.rockets;
         iceHP = Math.max(0, iceHP - damage);
         spawnIceShards(DESIGN_W / 2, 180, 12);
         rocketAnim = null;
+      }
+    }
 
-        if (iceHP <= 0) {
-          // Ice fully broken!
-          sfxBreak();
-          triggerShake(8, 20);
-          spawnIceShards(DESIGN_W / 2, 180, 30);
-          gamePhase = 'iceBreak';
-          sceneTimer = 0;
-        } else if (rocketCount > 0) {
-          // Bonus rockets - tap to fire
-          gamePhase = 'rocketReady';
-        } else {
-          // Next question cycle
-          generateQuiz();
-          gamePhase = 'quiz';
+    // Update bonus rocket queue
+    for (let i = rocketQueue.length - 1; i >= 0; i--) {
+      const r = rocketQueue[i];
+      r.progress += 0.05;
+      if (r.progress >= 0) {
+        r.y = 580 + (r.targetY - 580) * Math.min(1, r.progress);
+        if (sceneTimer % 2 === 0) {
+          addParticle(r.x + (Math.random()-0.5)*6, r.y + 15,
+            'shard', `hsl(${30+Math.random()*30}, 100%, ${50+Math.random()*30}%)`,
+            (Math.random()-0.5)*2, 2 + Math.random()*2, 20);
         }
+      }
+      if (r.progress >= 1) {
+        sfxHit();
+        triggerShake(3, 6);
+        const damage = iceMaxHP / currentStage.rockets;
+        iceHP = Math.max(0, iceHP - damage);
+        spawnIceShards(DESIGN_W / 2 + (Math.random()-0.5)*40, 180, 8);
+        rocketQueue.splice(i, 1);
+      }
+    }
+
+    // Check if all rockets done
+    if (!rocketAnim && rocketQueue.length === 0) {
+      isBonus = false;
+      if (iceHP <= 0) {
+        sfxBreak();
+        triggerShake(8, 20);
+        spawnIceShards(DESIGN_W / 2, 180, 30);
+        gamePhase = 'iceBreak';
+        sceneTimer = 0;
+      } else if (rocketCount > 0) {
+        gamePhase = 'rocketReady';
+      } else {
+        generateQuiz();
+        gamePhase = 'quiz';
       }
     }
   } else if (gamePhase === 'iceBreak') {
@@ -1300,29 +1335,42 @@ function updateGame() {
       // Check for auto synthesis
       synthResult = checkAutoSynth();
       if (synthResult) {
-        sfxSynth();
         gamePhase = 'synthesis';
         synthTimer = 0;
-        spawnSparkles(DESIGN_W / 2, 300, 30);
+        synthPhase = 0; // start with showing materials
+        // Play a subtle hint sound
+        playTone(440, 0.15, 'triangle', 0.2);
       } else {
         scene = 'stageSelect';
       }
     }
   } else if (gamePhase === 'synthesis') {
     synthTimer++;
-    if (synthTimer < 60) {
-      spawnSparkles(DESIGN_W / 2, 350, 3);
-    }
-    if (inputTapped && synthTimer > 90) {
-      // Check for another synthesis
-      const nextSynth = checkAutoSynth();
-      if (nextSynth) {
-        synthResult = nextSynth;
-        sfxSynth();
-        synthTimer = 0;
-        spawnSparkles(DESIGN_W / 2, 300, 30);
-      } else {
-        scene = 'stageSelect';
+    if (synthPhase === 0 && synthTimer > 50) {
+      // Materials shown long enough, start merge
+      synthPhase = 1;
+      synthTimer = 0;
+      playTone(523, 0.2, 'sine', 0.2);
+    } else if (synthPhase === 1 && synthTimer > 40) {
+      // Merge done, reveal card
+      synthPhase = 2;
+      synthTimer = 0;
+      sfxSynth();
+      spawnSparkles(DESIGN_W / 2, 320, 40);
+      spawnHearts(DESIGN_W / 2, 320, 5);
+    } else if (synthPhase === 2) {
+      if (synthTimer < 30) spawnSparkles(DESIGN_W / 2, 320, 2);
+      if (inputTapped && synthTimer > 60) {
+        // Check for another synthesis
+        const nextSynth = checkAutoSynth();
+        if (nextSynth) {
+          synthResult = nextSynth;
+          synthTimer = 0;
+          synthPhase = 0;
+          playTone(440, 0.15, 'triangle', 0.2);
+        } else {
+          scene = 'stageSelect';
+        }
       }
     }
   }
@@ -1385,9 +1433,14 @@ function drawGame() {
     drawBear(bearRunX, 200, 45, true);
   }
 
-  // Rocket animation
+  // Rocket animations
   if (rocketAnim) {
     drawRocket(rocketAnim.x, rocketAnim.y, 20);
+  }
+  for (const r of rocketQueue) {
+    if (r.progress >= 0) {
+      drawRocket(r.x, r.y, 18);
+    }
   }
 
   // Quiz area
@@ -1447,7 +1500,7 @@ function drawGame() {
         ctx.textAlign = 'center';
         if (selectedAnswer === quizData.correctIndex) {
           ctx.fillStyle = '#2E7D32';
-          ctx.fillText('せいかい！🎉 ロケット GET！', DESIGN_W / 2, 430);
+          ctx.fillText('せいかい！ロケット GET！', DESIGN_W / 2, 430);
         } else if (quizAttempt >= 2) {
           ctx.fillStyle = '#E65100';
           ctx.fillText('こたえは これだよ！ロケット1つ！', DESIGN_W / 2, 430);
@@ -1514,39 +1567,107 @@ function drawGame() {
     }
   }
 
-  // Synthesis phase
+  // Synthesis phase - 3-step animation
   if (gamePhase === 'synthesis' && synthResult) {
     ctx.fillStyle = 'rgba(0,0,0,0.4)';
     ctx.fillRect(0, 0, DESIGN_W, DESIGN_H);
 
     ctx.fillStyle = '#FFD700';
-    ctx.font = 'bold 26px sans-serif';
+    ctx.font = 'bold 24px sans-serif';
     ctx.textAlign = 'center';
-    ctx.fillText('じどう がっせい！', DESIGN_W / 2, 180);
 
-    // Show completed card with bear drawing
-    const isNew = saveData.completedCards[synthResult.id] === 1;
-    drawCard(DESIGN_W / 2 - 65, 220, 130, 180, '', synthResult.name, synthResult.color, true);
-    drawBear(DESIGN_W / 2, 300, 35, true);
+    if (synthPhase === 0) {
+      // Phase 0: Show material cards being consumed
+      ctx.fillText('がっせい はつどう！', DESIGN_W / 2, 140);
+      const n = synthCards.length;
+      const spacing = Math.min(80, (DESIGN_W - 60) / n);
+      const startX = DESIGN_W / 2 - (n - 1) * spacing / 2 - 30;
+      for (let i = 0; i < n; i++) {
+        const matId = synthCards[i];
+        const cx = startX + i * spacing;
+        // Slight bobbing
+        const bob = Math.sin(sceneTimer * 0.08 + i) * 4;
+        drawCard(cx, 180 + bob, 60, 75, '', '', '#4FC3F7', false, matId);
+      }
+      // Arrow pointing down
+      ctx.fillStyle = '#FFD700';
+      ctx.font = 'bold 40px sans-serif';
+      const arrowPulse = Math.sin(sceneTimer * 0.15) * 5;
+      ctx.fillText('▼', DESIGN_W / 2, 290 + arrowPulse);
 
-    // Rarity label
-    ctx.fillStyle = synthResult.color;
-    ctx.font = 'bold 22px sans-serif';
-    ctx.fillText(`${synthResult.stars} ${synthResult.label}`, DESIGN_W / 2, 430);
+      // Show target card outline (mystery)
+      ctx.strokeStyle = 'rgba(255,215,0,0.5)';
+      ctx.lineWidth = 2;
+      ctx.setLineDash([5, 5]);
+      drawRoundRect(DESIGN_W / 2 - 55, 320, 110, 150, 8);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.fillStyle = 'rgba(255,215,0,0.3)';
+      ctx.font = 'bold 40px sans-serif';
+      ctx.fillText('?', DESIGN_W / 2, 405);
 
-    if (isNew) {
-      ctx.fillStyle = '#FF5722';
-      ctx.font = 'bold 24px sans-serif';
-      ctx.fillText('NEW!', DESIGN_W / 2, 460);
-    }
+    } else if (synthPhase === 1) {
+      // Phase 1: Cards merge toward center
+      ctx.fillText('がっせい ちゅう...', DESIGN_W / 2, 140);
+      const n = synthCards.length;
+      const progress = Math.min(1, synthTimer / 35);
+      const eased = 1 - (1 - progress) * (1 - progress); // ease-out
+      for (let i = 0; i < n; i++) {
+        const matId = synthCards[i];
+        const spacing = Math.min(80, (DESIGN_W - 60) / n);
+        const startX = DESIGN_W / 2 - (n - 1) * spacing / 2 - 30 + i * spacing;
+        const targetX = DESIGN_W / 2 - 30;
+        const cx = startX + (targetX - startX) * eased;
+        const cy = 180 + (320 - 180) * eased;
+        const cardScale = 1 - eased * 0.3;
+        const cardAlpha = 1 - eased * 0.5;
+        ctx.globalAlpha = cardAlpha;
+        drawCard(cx, cy, 60 * cardScale, 75 * cardScale, '', '', '#FFD700', true, matId);
+        ctx.globalAlpha = 1;
+      }
+      // Glow at center growing
+      if (progress > 0.5) {
+        const glowSize = (progress - 0.5) * 2 * 60;
+        const grad = ctx.createRadialGradient(DESIGN_W/2, 360, 0, DESIGN_W/2, 360, glowSize);
+        grad.addColorStop(0, 'rgba(255,215,0,0.6)');
+        grad.addColorStop(1, 'rgba(255,215,0,0)');
+        ctx.fillStyle = grad;
+        ctx.fillRect(DESIGN_W/2 - glowSize, 360 - glowSize, glowSize*2, glowSize*2);
+      }
 
-    if (synthTimer > 90) {
-      const pulse = Math.sin(sceneTimer * 0.1) * 0.3 + 0.7;
-      ctx.globalAlpha = pulse;
-      ctx.fillStyle = '#FFF';
-      ctx.font = '20px sans-serif';
-      ctx.fillText('タップして つぎへ', DESIGN_W / 2, 550);
-      ctx.globalAlpha = 1;
+    } else if (synthPhase === 2) {
+      // Phase 2: Reveal completed card
+      ctx.fillText('かんせい！', DESIGN_W / 2, 160);
+
+      const isNew = saveData.completedCards[synthResult.id] === 1;
+      // Card appears with scale animation
+      const revealProgress = Math.min(1, synthTimer / 20);
+      const cardScale = 0.5 + revealProgress * 0.5;
+      const cardW = 130 * cardScale;
+      const cardH = 180 * cardScale;
+      drawCard(DESIGN_W / 2 - cardW / 2, 200, cardW, cardH, '', synthResult.name, synthResult.color, true);
+      drawBear(DESIGN_W / 2, 200 + cardH * 0.42, 35 * cardScale, true);
+
+      // Rarity label
+      ctx.fillStyle = synthResult.color === '#E0E0E0' ? '#666' : synthResult.color;
+      ctx.font = 'bold 22px sans-serif';
+      ctx.fillText(`${synthResult.stars} ${synthResult.label}`, DESIGN_W / 2, 420);
+
+      if (isNew) {
+        ctx.fillStyle = '#FF5722';
+        ctx.font = 'bold 26px sans-serif';
+        const newPulse = Math.sin(sceneTimer * 0.12) * 3;
+        ctx.fillText('NEW!', DESIGN_W / 2, 455 + newPulse);
+      }
+
+      if (synthTimer > 60) {
+        const pulse = Math.sin(sceneTimer * 0.1) * 0.3 + 0.7;
+        ctx.globalAlpha = pulse;
+        ctx.fillStyle = '#FFF';
+        ctx.font = '20px sans-serif';
+        ctx.fillText('タップして つぎへ', DESIGN_W / 2, 550);
+        ctx.globalAlpha = 1;
+      }
     }
   }
 
