@@ -933,6 +933,10 @@ function updateTitle() {
           saveGame();
         }
         scene = 'stageSelect';
+        // Auto-navigate to current world
+        const maxCleared = saveData.clearedStages.length > 0 ? Math.max(...saveData.clearedStages) : 0;
+        currentWorld = Math.floor(maxCleared / STAGES_PER_WORLD);
+        stageScrollY = 0; stageScrollTarget = 0;
       }
       // ずかん
       if (hitRect(inputX, inputY, 80, 475, 240, 55)) {
@@ -1061,131 +1065,157 @@ canvas.addEventListener('pointerdown', e => {
 canvas.addEventListener('pointerup', () => { stageDragStartY = -1; albumDragStartY = -1; });
 canvas.addEventListener('pointercancel', () => { stageDragStartY = -1; albumDragStartY = -1; });
 
+// World definitions (30 stages each)
+const WORLDS = [
+  { name: 'そうげん', emoji: '🌿', bg1: '#E8F5E9', bg2: '#C8E6C9', text: '#2E7D32' },
+  { name: 'うみべ',   emoji: '🏖️', bg1: '#E3F2FD', bg2: '#BBDEFB', text: '#1565C0' },
+  { name: 'やま',     emoji: '⛰️', bg1: '#EFEBE9', bg2: '#D7CCC8', text: '#4E342E' },
+  { name: 'さばく',   emoji: '🏜️', bg1: '#FFF8E1', bg2: '#FFECB3', text: '#FF8F00' },
+  { name: 'ゆきやま', emoji: '❄️', bg1: '#ECEFF1', bg2: '#CFD8DC', text: '#37474F' },
+  { name: 'かざん',   emoji: '🌋', bg1: '#FBE9E7', bg2: '#FFCCBC', text: '#BF360C' },
+  { name: 'ほしぞら', emoji: '🌌', bg1: '#EDE7F6', bg2: '#D1C4E9', text: '#4527A0' },
+];
+let currentWorld = 0;
+const STAGES_PER_WORLD = 30;
+
+function getWorldForStage(stageId) { return Math.floor((stageId - 1) / STAGES_PER_WORLD); }
+function getMaxUnlockedWorld() {
+  const maxCleared = saveData.clearedStages.length > 0 ? Math.max(...saveData.clearedStages) : 0;
+  return Math.floor(maxCleared / STAGES_PER_WORLD);
+}
+
 function updateStageSelect() {
-  // Smooth scroll
   stageScrollY += (stageScrollTarget - stageScrollY) * 0.2;
-  const rows = Math.ceil(STAGES.length / 3);
-  const maxScroll = Math.max(0, rows * 100 + 80 - 500);
+  const worldStages = STAGES.filter(s => getWorldForStage(s.id) === currentWorld);
+  const rows = Math.ceil(worldStages.length / 3);
+  const maxScroll = Math.max(0, rows * 95 + 60 - 480);
   stageScrollTarget = Math.max(0, Math.min(maxScroll, stageScrollTarget));
   stageScrollY = Math.max(0, Math.min(maxScroll, stageScrollY));
 
   if (inputTapped) {
-    // Check if it was a tap (not a drag)
     const dragDist = stageDragStartY >= 0 ? Math.abs(inputY - stageDragStartY) : 0;
     if (dragDist < 10) {
-      for (let i = 0; i < STAGES.length; i++) {
-        const col = i % 3;
-        const row = Math.floor(i / 3);
+      // World nav arrows
+      if (hitRect(inputX, inputY, 10, 30, 50, 40) && currentWorld > 0) {
+        sfxButton(); currentWorld--; stageScrollY = 0; stageScrollTarget = 0;
+      }
+      const maxWorld = getMaxUnlockedWorld();
+      if (hitRect(inputX, inputY, DESIGN_W - 60, 30, 50, 40) && currentWorld < Math.min(maxWorld, WORLDS.length - 1)) {
+        sfxButton(); currentWorld++; stageScrollY = 0; stageScrollTarget = 0;
+      }
+
+      // Stage buttons
+      for (let li = 0; li < worldStages.length; li++) {
+        const stage = worldStages[li];
+        const col = li % 3;
+        const row = Math.floor(li / 3);
         const cx = 35 + col * 125 + 40;
-        const cy = 100 + row * 100 + 40 - stageScrollY;
-        const r = 38;
-        if (cy < 60 || cy > 600) continue; // off screen
-        if (hitCircle(inputX, inputY, cx, cy, r)) {
-          if (i === 0 || saveData.clearedStages.includes(i)) {
+        const cy = 120 + row * 95 + 38 - stageScrollY;
+        if (cy < 80 || cy > 620) continue;
+        if (hitCircle(inputX, inputY, cx, cy, 35)) {
+          const globalIdx = stage.id - 1;
+          if (globalIdx === 0 || saveData.clearedStages.includes(globalIdx)) {
             sfxButton();
-            startStage(STAGES[i]);
+            startStage(stage);
           }
         }
       }
-      if (hitRect(inputX, inputY, 20, 640, 120, 45)) {
-        sfxButton();
-        scene = 'title';
-      }
+      if (hitRect(inputX, inputY, 20, 645, 120, 42)) { sfxButton(); scene = 'title'; }
     }
   }
 }
 
 function drawStageSelect() {
+  const world = WORLDS[Math.min(currentWorld, WORLDS.length - 1)];
   const grad = ctx.createLinearGradient(0, 0, 0, DESIGN_H);
-  grad.addColorStop(0, '#E3F2FD');
-  grad.addColorStop(1, '#BBDEFB');
+  grad.addColorStop(0, world.bg1); grad.addColorStop(1, world.bg2);
   ctx.fillStyle = grad;
   ctx.fillRect(0, 0, DESIGN_W, DESIGN_H);
 
-  ctx.fillStyle = '#1565C0';
-  ctx.font = 'bold 26px sans-serif';
+  // World title
+  ctx.fillStyle = world.text;
+  ctx.font = 'bold 22px sans-serif';
   ctx.textAlign = 'center';
-  ctx.fillText('ステージ えらび', DESIGN_W / 2, 40);
+  ctx.fillText(`ワールド ${currentWorld + 1}`, DESIGN_W / 2, 35);
+  ctx.font = 'bold 18px sans-serif';
+  ctx.fillText(world.name, DESIGN_W / 2, 58);
 
-  // Progress
-  const cleared = saveData.clearedStages.length;
-  ctx.fillStyle = '#78909C';
-  ctx.font = '14px sans-serif';
-  ctx.fillText(`${cleared} / ${STAGES.length} クリア`, DESIGN_W / 2, 65);
+  // World nav arrows
+  if (currentWorld > 0) {
+    ctx.fillStyle = world.text; ctx.font = 'bold 30px sans-serif';
+    ctx.textAlign = 'center'; ctx.fillText('◀', 35, 48);
+  }
+  const maxWorld = getMaxUnlockedWorld();
+  if (currentWorld < Math.min(maxWorld, WORLDS.length - 1)) {
+    ctx.fillStyle = world.text; ctx.font = 'bold 30px sans-serif';
+    ctx.textAlign = 'center'; ctx.fillText('▶', DESIGN_W - 35, 48);
+  }
 
-  // Clip scroll area
+  // Progress for this world
+  const worldStart = currentWorld * STAGES_PER_WORLD + 1;
+  const worldEnd = Math.min((currentWorld + 1) * STAGES_PER_WORLD, STAGES.length);
+  const worldCleared = saveData.clearedStages.filter(s => s >= worldStart && s <= worldEnd).length;
+  const worldTotal = worldEnd - worldStart + 1;
+  ctx.fillStyle = world.text; ctx.globalAlpha = 0.6;
+  ctx.font = '13px sans-serif';
+  ctx.fillText(`${worldCleared} / ${worldTotal} クリア`, DESIGN_W / 2, 78);
+  ctx.globalAlpha = 1;
+
+  // Stages
   ctx.save();
-  ctx.beginPath();
-  ctx.rect(0, 80, DESIGN_W, 550);
-  ctx.clip();
+  ctx.beginPath(); ctx.rect(0, 90, DESIGN_W, 545); ctx.clip();
 
-  for (let i = 0; i < STAGES.length; i++) {
-    const col = i % 3;
-    const row = Math.floor(i / 3);
+  const worldStages = STAGES.filter(s => getWorldForStage(s.id) === currentWorld);
+  for (let li = 0; li < worldStages.length; li++) {
+    const stage = worldStages[li];
+    const col = li % 3;
+    const row = Math.floor(li / 3);
     const cx = 35 + col * 125 + 40;
-    const cy = 100 + row * 100 + 40 - stageScrollY;
-    const r = 38;
+    const cy = 120 + row * 95 + 38 - stageScrollY;
+    const r = 35;
+    if (cy < 50 || cy > 680) continue;
 
-    if (cy < 30 || cy > 680) continue; // culling
+    const isCleared = saveData.clearedStages.includes(stage.id);
+    const globalIdx = stage.id - 1;
+    const locked = globalIdx > 0 && !saveData.clearedStages.includes(globalIdx);
 
-    const isCleared = saveData.clearedStages.includes(STAGES[i].id);
-    const locked = i > 0 && !saveData.clearedStages.includes(i);
+    // Circle color
+    ctx.fillStyle = isCleared ? '#81C784' : (locked ? 'rgba(0,0,0,0.12)' : world.text);
+    ctx.globalAlpha = locked ? 0.5 : 1;
+    ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = 'rgba(255,255,255,0.3)'; ctx.lineWidth = 2; ctx.stroke();
 
-    // Color by zone
-    let baseColor;
-    if (locked) baseColor = '#B0BEC5';
-    else if (isCleared) baseColor = '#81C784';
-    else if (i < 10) baseColor = '#4FC3F7';
-    else if (i < 20) baseColor = '#FFB74D';
-    else baseColor = '#EF5350';
+    // Always show stage number
+    ctx.fillStyle = locked ? 'rgba(0,0,0,0.3)' : '#FFF';
+    ctx.font = `bold ${locked ? 16 : 20}px sans-serif`;
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText(String(stage.id), cx, cy);
 
-    ctx.fillStyle = baseColor;
-    ctx.beginPath();
-    ctx.arc(cx, cy, r, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.strokeStyle = 'rgba(255,255,255,0.4)';
-    ctx.lineWidth = 2;
-    ctx.stroke();
-
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
+    // Lock icon (small, below number)
     if (locked) {
-      ctx.fillStyle = '#78909C';
-      ctx.fillRect(cx - 7, cy - 1, 14, 10);
-      ctx.strokeStyle = '#78909C'; ctx.lineWidth = 2;
-      ctx.beginPath(); ctx.arc(cx, cy - 5, 6, Math.PI, 0); ctx.stroke();
-    } else {
-      ctx.fillStyle = '#FFF';
-      ctx.font = 'bold 22px sans-serif';
-      ctx.fillText(String(i + 1), cx, cy);
+      ctx.fillStyle = 'rgba(0,0,0,0.25)';
+      ctx.fillRect(cx - 5, cy + 12, 10, 7);
+      ctx.strokeStyle = 'rgba(0,0,0,0.25)'; ctx.lineWidth = 1.5;
+      ctx.beginPath(); ctx.arc(cx, cy + 10, 5, Math.PI, 0); ctx.stroke();
     }
 
+    // Star for cleared
     if (isCleared) {
       ctx.fillStyle = '#FFD700';
       ctx.beginPath();
       for (let j = 0; j < 10; j++) {
         const a = (j * 36 - 90) * Math.PI / 180;
-        const sr = j % 2 === 0 ? 8 : 3;
-        if (j===0) ctx.moveTo(cx+Math.cos(a)*sr, cy-r-8+Math.sin(a)*sr);
-        else ctx.lineTo(cx+Math.cos(a)*sr, cy-r-8+Math.sin(a)*sr);
+        const sr = j % 2 === 0 ? 7 : 3;
+        if (j===0) ctx.moveTo(cx+Math.cos(a)*sr, cy-r-6+Math.sin(a)*sr);
+        else ctx.lineTo(cx+Math.cos(a)*sr, cy-r-6+Math.sin(a)*sr);
       }
       ctx.fill();
     }
+    ctx.globalAlpha = 1;
   }
   ctx.restore();
 
-  // Scroll indicator
-  const rows = Math.ceil(STAGES.length / 3);
-  const maxScroll = Math.max(1, rows * 100 + 80 - 500);
-  if (maxScroll > 0) {
-    const barH = 550 * (550 / (rows * 100 + 80));
-    const barY = 80 + (stageScrollY / maxScroll) * (550 - barH);
-    ctx.fillStyle = 'rgba(0,0,0,0.15)';
-    drawRoundRect(DESIGN_W - 8, barY, 5, barH, 2);
-    ctx.fill();
-  }
-
-  drawButton(20, 640, 120, 45, 'もどる', '#78909C', '#FFF', 18);
+  drawButton(20, 645, 120, 42, 'もどる', '#78909C', '#FFF', 16);
 }
 
 // ============================================================
@@ -1818,38 +1848,16 @@ function updateGame() {
 }
 
 function drawGame() {
-  // Background - changes by zone
+  // Background - matches current world
   const grad = ctx.createLinearGradient(0, 0, 0, DESIGN_H);
-  const zone = Math.floor((currentStage.id - 1) / 10);
-  const zones = [
-    { bg1: '#E3F2FD', bg2: '#E1F5FE', text: '#1565C0' }, // 1-10 ice blue
-    { bg1: '#FFF3E0', bg2: '#FFE0B2', text: '#E65100' }, // 11-20 sunset
-    { bg1: '#F3E5F5', bg2: '#E1BEE7', text: '#6A1B9A' }, // 21-30 aurora
-    { bg1: '#E8F5E9', bg2: '#C8E6C9', text: '#2E7D32' }, // 31-40 forest
-    { bg1: '#FCE4EC', bg2: '#F8BBD0', text: '#C2185B' }, // 41-50 cherry
-    { bg1: '#ECEFF1', bg2: '#CFD8DC', text: '#37474F' }, // 51-60 twilight
-    { bg1: '#FFFDE7', bg2: '#FFF9C4', text: '#F57F17' }, // 61-70 gold
-    { bg1: '#E0F7FA', bg2: '#B2EBF2', text: '#00838F' }, // 71-80 ocean
-    { bg1: '#FBE9E7', bg2: '#FFCCBC', text: '#BF360C' }, // 81-90 volcano
-    { bg1: '#F3E5F5', bg2: '#CE93D8', text: '#4A148C' }, // 91-100 cosmic
-    { bg1: '#E8EAF6', bg2: '#C5CAE9', text: '#283593' }, // 101-110 indigo
-    { bg1: '#FFF8E1', bg2: '#FFECB3', text: '#FF8F00' }, // 111-120 amber
-    { bg1: '#E0F2F1', bg2: '#B2DFDB', text: '#00695C' }, // 121-130 teal
-    { bg1: '#FCE4EC', bg2: '#F8BBD0', text: '#AD1457' }, // 131-140 rose
-    { bg1: '#F1F8E9', bg2: '#DCEDC8', text: '#33691E' }, // 141-150 lime
-    { bg1: '#EDE7F6', bg2: '#D1C4E9', text: '#4527A0' }, // 151-160 deep purple
-    { bg1: '#E3F2FD', bg2: '#90CAF9', text: '#0D47A1' }, // 161-170 deep blue
-    { bg1: '#FFF3E0', bg2: '#FFE0B2', text: '#E65100' }, // 171-180 deep orange
-    { bg1: '#E8F5E9', bg2: '#A5D6A7', text: '#1B5E20' }, // 181-190 deep green
-    { bg1: '#FAFAFA', bg2: '#E0E0E0', text: '#212121' }, // 191-200 platinum
-  ];
-  const z = zones[Math.min(zone, zones.length - 1)];
-  grad.addColorStop(0, z.bg1); grad.addColorStop(1, z.bg2);
+  const worldIdx = getWorldForStage(currentStage.id);
+  const w = WORLDS[Math.min(worldIdx, WORLDS.length - 1)];
+  grad.addColorStop(0, w.bg1); grad.addColorStop(1, w.bg2);
   ctx.fillStyle = grad;
   ctx.fillRect(0, 0, DESIGN_W, DESIGN_H);
 
   // Stage label
-  ctx.fillStyle = z.text;
+  ctx.fillStyle = w.text;
   ctx.font = 'bold 20px sans-serif';
   ctx.textAlign = 'left';
   ctx.fillText(`ステージ ${currentStage.id}`, 15, 30);
