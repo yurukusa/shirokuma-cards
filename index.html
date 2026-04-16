@@ -1693,10 +1693,12 @@ function generateQuiz() {
     const weights = types.map(t => {
       const entry = unlockTable.find(e => e[1] === t);
       const age = stageId - entry[0]; // how long since unlocked
-      // Newer types get higher weight; old basics get lower weight at high stages
-      if (age < 15) return 3;  // just unlocked: high chance
-      if (age < 45) return 2;  // recent: normal
-      return 1;                // old: lower but still possible (review)
+      // 新しい問題タイプを優先、古いものは段階的に出現率を下げる
+      if (age < 15) return 3;    // 解禁直後: 高確率
+      if (age < 30) return 2;    // まだ新しい
+      if (age < 60) return 1;    // 普通
+      if (age < 90) return 0.5;  // 古め: 半分
+      return 0.2;                // かなり古い: 復習程度
     });
     const totalW = weights.reduce((a, b) => a + b, 0);
     let r = Math.random() * totalW;
