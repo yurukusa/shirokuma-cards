@@ -1791,6 +1791,13 @@ function generateQuiz() {
       { name: 'みぎ', arrow: '→' }, { name: 'ひだり', arrow: '←' },
       { name: 'うえ', arrow: '↑' }, { name: 'した', arrow: '↓' }
     ];
+    // S60以降: 斜め方向を追加
+    if (stageId >= 60) {
+      dirs.push(
+        { name: 'みぎうえ', arrow: '↗' }, { name: 'ひだりうえ', arrow: '↖' },
+        { name: 'みぎした', arrow: '↘' }, { name: 'ひだりした', arrow: '↙' }
+      );
+    }
     const correct = dirs[Math.floor(Math.random() * dirs.length)];
 
     if (Math.random() < 0.5) {
