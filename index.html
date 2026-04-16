@@ -1881,12 +1881,12 @@ function checkAutoSynth() {
       synthCards = recipe.materials.slice(5, 10).map(m => m.id);
       saveData.completedCards[recipe.id] = 2;
       saveGame();
-      return { ...recipe, synthLevel: 2, synthLabel: 'からだ できた！' };
+      return { ...recipe, synthLevel: 2, synthLabel: 'ちからが あつまってきた！' };
     } else if (owned >= 5 && currentLevel < 1) {
       synthCards = recipe.materials.slice(0, 5).map(m => m.id);
       saveData.completedCards[recipe.id] = 1;
       saveGame();
-      return { ...recipe, synthLevel: 1, synthLabel: 'あたま できた！' };
+      return { ...recipe, synthLevel: 1, synthLabel: 'ひかりはじめた！' };
     }
   }
   return null;
